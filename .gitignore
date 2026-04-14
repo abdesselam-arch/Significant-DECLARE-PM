@@ -1,0 +1,9 @@
+# Ignore the data folders entirely
+CSV/
+Experiments/Results/
+
+# Also block these extensions just in case
+*.xes
+*.csv
+*.pyc
+**/__pycache__/
