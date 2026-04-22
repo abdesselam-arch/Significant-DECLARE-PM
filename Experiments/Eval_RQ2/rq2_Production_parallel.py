@@ -228,14 +228,18 @@ RUN_TERNARY_SENSITIVITY = True
 
 # ── Required Phase 1 JSON keys (for schema validation) ──────────────────
 REQUIRED_PHASE1_KEYS = {
-    'significance_category',
-    'is_significant_bh',
-    'is_significant_structural',
-    'is_significant_discriminative',
     'constraint_type',
     'activity_a',
-    'direction',          # DIRECTION-AWARE: required for directional analysis
+    'direction',
+    'storey_fdr',   # sub-object
+    'bh_fdr',       # sub-object
 }
+REQUIRED_STOREY_KEYS = {
+    'significance_category',
+    'is_significant_structural',
+    'is_significant_discriminative',
+}
+REQUIRED_BH_KEYS = {'is_significant'}
 
 
 # ============================================================================
@@ -494,43 +498,98 @@ def load_event_log(
 
 
 def load_phase1_results(json_path: str) -> dict:
-    """Load Phase 1 three-hypothesis results JSON."""
+    """
+    Load Phase 1 JSON.
+
+    SOURCE: data['significant_patterns']  — nested schema, 'Both' only.
+
+    NOTE: BH, Union, Structural-only, Discriminative-only sets cannot be
+    recovered from this list alone (those require all tested patterns).
+    Only Ours / OursPositive / OursNegative are fully valid here.
+    """
     print(f"   Loading Phase 1 results: {json_path}")
     with open(json_path, 'r', encoding='utf-8') as f:
         data = json.load(f)
 
-    n_all = len(data.get('all_patterns', []))
-    n_sig = len(data.get('significant_patterns', []))
-    n_str = len(data.get('structural_only_patterns', []))
-    n_dis = len(data.get('discriminative_only_patterns', []))
-    print(f"   Phase 1 patterns: {n_all:,} total, "
-          f"{n_sig} Both, {n_str} Structural only, {n_dis} Discriminative only")
+    # ── Use significant_patterns (nested schema) as the working list ──
+    sig_pats  = data.get('significant_patterns', [])
+    str_pats  = data.get('structural_only_patterns', [])
+    dis_pats  = data.get('discriminative_only_patterns', [])
 
-    # JSON schema validation
-    all_pats = data.get('all_patterns', [])
-    if all_pats:
-        actual_keys = set(all_pats[0].keys())
-        missing_keys = REQUIRED_PHASE1_KEYS - actual_keys
-        assert not missing_keys, (
-            f"Phase 1 JSON schema mismatch: required keys {missing_keys} "
-            f"not found. Actual keys: {sorted(actual_keys)}. "
-            f"Ensure Phase 1 was run with the matching version."
-        )
-        print(f"   ✓ JSON schema validated ({len(REQUIRED_PHASE1_KEYS)} required keys present, "
-              f"including 'direction')")
+    # Build a unified list for classification — all nested-schema entries
+    all_nested = sig_pats + str_pats + dis_pats
+    n_sig  = len(sig_pats)
+    n_str  = len(str_pats)
+    n_dis  = len(dis_pats)
+    n_all  = len(all_nested)
 
-        # Report direction distribution
-        dir_counts = Counter(p.get('direction', 'Unknown') for p in all_pats)
-        print(f"   Direction distribution (all patterns): {dict(dir_counts)}")
+    print(f"   Phase 1 patterns loaded from sub-lists (nested schema):")
+    print(f"     Both (significant_patterns):        {n_sig}")
+    print(f"     Structural only:                    {n_str}")
+    print(f"     Discriminative only:                {n_dis}")
+    print(f"     Total for classification:           {n_all}")
 
-        # Report direction distribution within 'Both' category
-        both_pats = [p for p in all_pats if p.get('significance_category') == 'Both']
-        if both_pats:
-            dir_both = Counter(p.get('direction', 'Unknown') for p in both_pats)
-            print(f"   Direction distribution (Both only):    {dict(dir_both)}")
-    else:
-        print(f"   ⚠️  all_patterns is empty in Phase 1 JSON.")
+    # Warn about BH/Union coverage gap
+    metadata = data.get('metadata', data.get('summary', {}))
+    n_tested = metadata.get('total_patterns_tested', None)
+    bh_ref   = metadata.get('bh_rejections_reference', None)
+    if n_tested is not None:
+        n_neither = n_tested - n_all
+        if n_neither > 0:
+            print(f"   ⚠️  WARNING: {n_neither} 'Neither' patterns are absent "
+                  f"(not stored in any sub-list). BH and Union sets will be "
+                  f"built from {n_all}/{n_tested} tested patterns — counts "
+                  f"may be lower than Phase 1 reference ({bh_ref}).")
+        else:
+            print(f"   ✓ Coverage: sub-lists cover all {n_tested} tested patterns.")
 
+    if not all_nested:
+        print(f"   ⚠️  All sub-lists are empty in Phase 1 JSON.")
+        # Inject empty list so downstream code has a consistent key
+        data['_working_patterns'] = []
+        return data
+
+    # ── Schema validation on first nested entry ───────────────────────
+    first = all_nested[0]
+    actual_top = set(first.keys())
+    missing_top = REQUIRED_PHASE1_KEYS - actual_top
+    assert not missing_top, (
+        f"Phase 1 JSON schema mismatch — missing top-level keys: {missing_top}. "
+        f"Actual keys: {sorted(actual_top)}."
+    )
+    storey_sample = first.get('storey_fdr', {})
+    missing_storey = REQUIRED_STOREY_KEYS - set(storey_sample.keys())
+    assert not missing_storey, (
+        f"storey_fdr sub-object missing keys: {missing_storey}."
+    )
+    bh_sample = first.get('bh_fdr', {})
+    missing_bh = REQUIRED_BH_KEYS - set(bh_sample.keys())
+    assert not missing_bh, (
+        f"bh_fdr sub-object missing keys: {missing_bh}."
+    )
+    print(f"   ✓ Nested JSON schema validated on significant_patterns entries.")
+
+    # ── BH count cross-check (best-effort) ────────────────────────────
+    bh_count_here = sum(
+        1 for p in all_nested
+        if p.get('bh_fdr', {}).get('is_significant', False)
+    )
+    if bh_ref is not None:
+        if bh_count_here < bh_ref:
+            print(f"   ⚠️  BH count from sub-lists: {bh_count_here} "
+                  f"(Phase 1 reference: {bh_ref}). "
+                  f"Deficit of {bh_ref - bh_count_here} — 'Neither' BH patterns absent.")
+        else:
+            print(f"   ✓ BH count: {bh_count_here} == metadata.bh_rejections_reference")
+
+    # ── Direction distributions ───────────────────────────────────────
+    dir_all  = Counter(p.get('direction', 'Unknown') for p in all_nested)
+    dir_both = Counter(p.get('direction', 'Unknown') for p in sig_pats)
+    print(f"   Direction distribution (all sub-lists, n={n_all}): {dict(dir_all)}")
+    print(f"   Direction distribution (Both only,    n={n_sig}):  {dict(dir_both)}")
+
+    # Inject unified working list under a consistent internal key
+    data['_working_patterns'] = all_nested
     return data
 
 
@@ -646,22 +705,33 @@ def retrieve_phase1_artifacts(
 
 def _classify_pattern_from_json(pat: dict) -> dict:
     """
-    Extract classification fields from a Phase 1 all_patterns JSON entry.
-    Now includes direction and dominant_class for direction-aware analysis.
+    Extract classification fields from a Phase 1 JSON entry.
+    Reads the NESTED schema: significance flags are inside
+    'storey_fdr' and 'bh_fdr' sub-objects, not at the top level.
     """
+    storey = pat.get('storey_fdr', {})
+    bh     = pat.get('bh_fdr', {})
+
     return {
         'spec': (
             pat['constraint_type'],
             pat['activity_a'],
             pat.get('activity_b'),
         ),
-        'significance_category': pat.get('significance_category', 'Neither'),
-        'is_significant_bh': pat.get('is_significant_bh', False),
-        'is_significant_structural': pat.get('is_significant_structural', False),
-        'is_significant_discriminative': pat.get('is_significant_discriminative', False),
-        'is_significant_final': pat.get('is_significant_final', False),
-        'direction': pat.get('direction', 'Unknown'),
-        'dominant_class': pat.get('dominant_class', None),
+        # ── From storey_fdr sub-object ───────────────────────────────
+        'significance_category':         storey.get('significance_category',
+                                                     'Neither'),
+        'is_significant_structural':     storey.get('is_significant_structural',
+                                                     False),
+        'is_significant_discriminative': storey.get('is_significant_discriminative',
+                                                     False),
+        'is_significant_final':          storey.get('is_significant_final',
+                                                     False),
+        # ── From bh_fdr sub-object ───────────────────────────────────
+        'is_significant_bh':             bh.get('is_significant', False),
+        # ── Top-level fields ─────────────────────────────────────────
+        'direction':                     pat.get('direction', 'Unknown'),
+        'dominant_class':                pat.get('dominant_class', None),
     }
 
 
@@ -734,7 +804,7 @@ def build_all_feature_matrices(
     print("STEP 2: BUILD FEATURE MATRICES — 8 PATTERN SETS (direction-aware)")
     print(f"{'='*80}")
 
-    all_pats = [_classify_pattern_from_json(p) for p in phase1_results.get('all_patterns', [])]
+    all_pats = [_classify_pattern_from_json(p) for p in phase1_results.get('_working_patterns', [])]
     print(f"   Loaded {len(all_pats):,} pattern classifications from Phase 1 JSON")
 
     n_both = sum(1 for p in all_pats if p['significance_category'] == 'Both')

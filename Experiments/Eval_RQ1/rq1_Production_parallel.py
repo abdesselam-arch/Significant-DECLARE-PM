@@ -422,7 +422,7 @@ def compute_R_obs(
 
     # BH reference uses analytic chi2_4 p-values (per p1 Step 5a)
     structural_idx   = orig_quantities['structural_idx']
-    p_fisher_m_prime = orig_quantities['p_conjunction_orig'][structural_idx]
+    p_fisher_m_prime = orig_quantities['p_conjunction_empirical_orig'][structural_idx]
     rejected_bh, _, _ = benjamini_hochberg(p_fisher_m_prime, alpha)
     R_bh = int(np.sum(rejected_bh))
 

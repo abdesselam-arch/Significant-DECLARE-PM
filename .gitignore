@@ -1,6 +1,6 @@
 # Ignore the data folders entirely
 CSV/
-Experiments/Results/
+Experiments/ResultsHPC/
 
 # Also block these extensions just in case
 *.xes

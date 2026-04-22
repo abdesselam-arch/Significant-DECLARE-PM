@@ -169,7 +169,7 @@ BASE_DIR = os.path.abspath(os.path.join(SCRIPT_DIR, '..', '..'))
 sys.path.insert(0, SCRIPT_DIR)
 sys.path.insert(0, BASE_DIR)
 
-from Experiments.P1_SDSM.p1_Sepsis import (
+from Experiments.P1_SDSM.p1_Sepsis_parallel import (
 # from p1_Sepsis import (
     # Data loading & preprocessing
     load_and_preprocess_data,
@@ -190,6 +190,7 @@ from Experiments.P1_SDSM.p1_Sepsis import (
     benjamini_hochberg,
     # Pipeline entry point
     execute_pipeline,
+    generate_outputs,
     # Data structures
     CaseInfo,
     PatternTestResult,
@@ -230,8 +231,8 @@ PHASE0_JSON    = P1_SPEC_FILE
 RQ1_OUTPUT_DIR = "RQ1_Sepsis"
 
 # Original run budget (full precision, used by execute_pipeline)
-B1_FULL = 4_000
-B2_FULL = 2_000
+B1_FULL = 2_000
+B2_FULL = 1_000
 
 # Null replicate budget (reduced for feasibility)
 # Phipson-Smyth resolution: 1/(B1_VALID+1) ~ 5e-4, well below alpha=0.05
@@ -300,6 +301,13 @@ def run_original_pipeline(n_workers: int = 1) -> dict:
     orig_config['n_workers']    = n_workers   # inner B₂ parallelism for structural test
 
     output = execute_pipeline(input_file=CSV_PATH, config=orig_config)
+
+    # ── ADD: write p1's results to Sepsis_ThreeHyp_SAM_Parallel/ ─────────
+    generate_outputs(
+        output['pattern_results'],
+        output['case_data'],
+        output['timing'],
+    )
 
     case_data       = output['case_data']
     pattern_results = output['pattern_results']
@@ -414,7 +422,8 @@ def compute_R_obs(
 
     # BH reference uses analytic chi2_4 p-values (per p1 Step 5a)
     structural_idx   = orig_quantities['structural_idx']
-    p_fisher_m_prime = orig_quantities['p_conjunction_orig'][structural_idx]
+    # p_fisher_m_prime = orig_quantities['p_conjunction_orig'][structural_idx]
+    p_fisher_m_prime = orig_quantities['p_conjunction_empirical_orig'][structural_idx]
     rejected_bh, _, _ = benjamini_hochberg(p_fisher_m_prime, alpha)
     R_bh = int(np.sum(rejected_bh))
 

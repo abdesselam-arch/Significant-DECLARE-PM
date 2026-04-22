@@ -1258,10 +1258,28 @@ def run_phase1_on_perturbed_log(
             r.is_significant_final = r.is_significant_discriminative and r.is_significant_structural
 
     # BH reference
-    rejected, bh_thresh, _ = benjamini_hochberg(p_conj_values, alpha, method='BH')
-    for i, r in enumerate(pattern_results):
-        r.is_significant_bh = bool(rejected[i])
-        r.bh_threshold = float(bh_thresh[i])
+    # rejected, bh_thresh, _ = benjamini_hochberg(p_conj_values, alpha, method='BH')
+    # for i, r in enumerate(pattern_results):
+    #     r.is_significant_bh = bool(rejected[i])
+    #     r.bh_threshold = float(bh_thresh[i])
+
+    # BH reference — on m'' empirical p-values (matches Phase 1 Step 5b exactly)
+    # Phase 1: benjamini_hochberg(p_fisher_filtered, alpha) where p_fisher_filtered
+    #          = p_empirical_all[structural_idx]. Replaces the previous incorrect
+    #          version which applied BH to analytic chi2_4 on all m patterns.
+    if m_prime > 0:
+        p_empirical_m_prime = p_empirical_all[structural_idx]
+        rejected_bh_f, bh_thresh_f, _ = benjamini_hochberg(
+            p_empirical_m_prime, alpha, method='BH'
+        )
+        for bh_i, orig_i in enumerate(structural_idx):
+            pattern_results[orig_i].is_significant_bh = bool(rejected_bh_f[bh_i])
+            pattern_results[orig_i].bh_threshold = float(bh_thresh_f[bh_i])
+        # Patterns outside m'' retain is_significant_bh=False and bh_threshold=0.0
+        # (set at construction time), which is correct — they were excluded from
+        # BH consideration by the scope filter.
+    # If m_prime == 0: no patterns pass the scope filter; all is_significant_bh
+    # remain False from construction. No action needed.
 
     return pattern_results
 
