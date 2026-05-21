@@ -1,31 +1,34 @@
 #!/usr/bin/env python3
 """
-rq1_BPI_17.py  —  RQ1 FDR Control Validity: BPI Challenge 2017
-=============================================================================
+rq1_BPI_17.py  —  RQ1 FDR Control Validity: BPI-17 (Offer-Lifecycle Mildly Imbalanced Log)
+============================================================================================
 
 PURPOSE
 -------
-Empirically validate that the Fisher-Storey FDR framework controls the
-false discovery rate at nominal alpha = 0.05 on the BPI Challenge 2017
-(loan application) event log, following the gold-standard held-out
-permutation protocol of Pellegrina & Vandin (KDD 2018).
+Empirically validate that the Hou-Storey FDR framework controls the
+false discovery rate at nominal alpha = 0.05 on the BPI-17 offer lifecycle
+event log, following the gold-standard held-out permutation protocol of
+Pellegrina & Vandin (KDD 2018).
 
 Label definition (Teinemaa et al. TKDE 2019 — bpic2017_accepted sub-log):
-    Deviant (1): terminal O_ event is O_Refused or O_Cancelled  -> loan not accepted
-    Normal  (0): terminal O_ event is O_Accepted                -> loan accepted
+    Only O_ (offer lifecycle) events used; A_ and W_ events filtered out.
+    Label derived from the LAST O_ event per case:
+    Normal  (0): last O_ event = O_Accepted -> loan offer accepted   (12,762 cases, 40.5%)
+    Deviant (1): last O_ event != O_Accepted (Cancelled/Refused/other) (18,747 cases, 59.5%)
+    n = 31,509 cases total; IR = 1.469 (deviant/normal)
 
 RESEARCH QUESTION
 -----------------
 "Given a log where no pattern is structurally AND discriminatively
-significant, does the Fisher-Storey framework guarantee FDR <= alpha?"
+significant, does the Hou-Storey framework guarantee FDR <= alpha?"
 
 This defines the global joint null for every pattern i:
 
     H0^(i): pattern i is null on BOTH axes simultaneously
 
-For the Fisher combination statistic T = -2(ln p_struct + ln p_disc) to
-follow its nominal chi2(4) distribution under this null, BOTH input
-p-values must be independently U(0,1).  Label-only permutation guarantees
+For the Hou (2005) combination statistic T_Hou = -2[W_STRUCT*ln p_s + W_DISC*ln p_d]
+to follow its oracle c·χ²_f distribution under this null (c=W_S²+W_D², f=2/c),
+BOTH input p-values must be independently U(0,1).  Label-only permutation guarantees
 only p_disc ~ U(0,1).  It says nothing about p_struct, because the
 structural test measures within-class trace ordering — a property of the
 traces themselves, not the label assignment.
@@ -53,11 +56,18 @@ each held-out replicate b applies TWO independent operations:
         label permutation test produces fresh p_disc + null_delta_matrix,
         structural permutation test produces fresh p_struct for both classes.
 
-Under this double-null:
-    T_i^(b) = -2(ln p_struct^(b) + ln p_disc^(b)) ~ chi2(4)
+Under this double-null, p_struct^(b) ~ U(0,1) and p_disc^(b) ~ U(0,1)
+independently. The Hou (2005) weighted combination statistic:
 
-This is NOT an architectural change to p1_BPI_17.py.  The Phase 1 framework,
-Fisher combination, Adaptive Storey, and significance gates remain unchanged.
+    T_Hou^(b)(i) = -2[W_STRUCT·ln p_struct^(b)(i) + W_DISC·ln p_disc^(b)(i)]
+
+follows c·χ²_f (Satterthwaite) with c = W_STRUCT² + W_DISC², f = 2/c.
+This is the oracle null distribution for the BH reference in null replicates.
+For the Storey gate, the oracle analytic Hou p-value is used directly:
+    p_Hou^oracle(T) = chi2.sf(T / c, f)   where rho_sd = 0 (independence under double-null).
+
+This is NOT an architectural change to p1_BPI_17_hou.py.  The Phase 1 framework,
+Hou weighted combination, Adaptive Storey, and significance gate remain unchanged.
 Only the RQ1 evaluation script constructs held-out replicates that are
 faithful to the joint null the RQ claims to validate.
 
@@ -65,54 +75,67 @@ WHY LABEL-ONLY PERMUTATION IS INSUFFICIENT
 --------------------------------------------
 Even with fresh (non-cached) structural p-values under label-only permutation,
 p_struct^(b) is NOT U(0,1) for patterns with real within-log temporal structure.
-In BPI 2017, many patterns spanning the A_/O_/W_ activity namespaces have
-structural signal visible in any random class partition (pi0_struct < 1).
-The Fisher statistic for those patterns remains shifted rightward:
+In BPI-17, offer lifecycle events (O_ prefix) follow a highly predictable sequential
+regularity: O_Create Offer -> O_Sent -> O_Accepted/Cancelled/Refused. This ordering
+persists across any random class partition, so structural p-values remain small.
+The Hou weighted statistic for those patterns remains shifted rightward:
 
-    T_i^(b) = [-2 ln p_struct^(fresh,b)]  +  [-2 ln p_disc^(b)]
-               ^^ != chi2(2), > 0 in exp.      ^^ ~ chi2(2)
+    T_Hou^(b)(i) = -2[0.40·ln p_struct^(fresh,b) + 0.60·ln p_disc^(b)]
+                        ^^ != U(0,1), right-shifted          ^^ ~ U(0,1)
 
 This residual structural signal inflates FDR_emp beyond alpha.  Within-trace
 shuffling eliminates it.
 
-ALIGNMENT WITH p1_BPI_17.py
-----------------------------
+ALIGNMENT WITH p1_BPI_17_hou.py v9.0
+--------------------------------------
 The decision procedure in null replicates faithfully reproduces
-execute_three_hypothesis_protocol.  p1 v8.0 uses EMPIRICAL Phipson-Smyth
-calibration of T_F for the Storey gate; the BH reference retains analytic
-chi2_4.  Under the double-null, analytic chi2_4 IS the oracle null p-value
-(see NOTE ON EMPIRICAL CALIBRATION in run_doubly_null_replicate), so null
-replicates correctly use analytic p-values without loss of validity.
+execute_three_hypothesis_protocol. Key design decisions:
 
-    1.  Score:
-            T_F(p) = -2*(ln p_struct_dom + ln p_disc)
+    1.  Score (Hou 2005 weighted):
+            T_Hou(p) = -2*(W_STRUCT*ln p_struct_dom + W_DISC*ln p_disc)
+            Same weights as p1 (precision-proportional: W_DISC = B_label / (B_label + B2_test)).
+            BPI-17 CONFIG: B_label=1500, B2_test=B_trace//2=1000 →
+            W_DISC=1500/2500=0.60, W_STRUCT=1000/2500=0.40.
+            (p1 Step 3: label perm B₁=1,500; Step 4: structural perm B₂=2,000,
+             sample split B2_screen=1,000/B2_test=1,000.)
 
-    2.  Analytic p-value (BH reference only):
-            p_conjunction(p) = chi2.sf(T_F(p), df=4)
+    2.  Oracle p-value (BOTH Storey gate and BH reference in null replicates):
+            p_Hou^oracle(p) = chi2.sf(T_Hou(p) / c, df=f)
+            c = W_STRUCT^2 + W_DISC^2 = 0.40^2 + 0.60^2 = 0.52,
+            f = 2/c ≈ 3.846,  rho_sd = 0 (independence under double-null).
+            The real-data tf_null_matrix is NOT passed to null replicates — it contains
+            T_Hou values under the real distribution (with signal), which are right-shifted
+            and would bias FDR_emp upward. The oracle is exact under double-null.
+            Monotonicity guarantees the oracle rejection set equals the empirical one.
 
-    3.  Empirical Phipson-Smyth p-value (Storey gate, real run only):
-            p̃_F(p) = (1 + #{b: T_F^(b)(p) >= T_F(p)}) / (B_null + 1)
-            computed via compute_double_null_tf_matrix (B_null=100 replicates)
-            NULL REPLICATES: use p_conjunction (analytic = oracle under double-null)
-
-    4.  Structural scope filter on m'' patterns:
+    3.  Structural scope filter on m'' patterns (p1 Step 4 screen half):
             structural_idx = { i : min(p_struct_screen_c0[i], p_struct_screen_c1[i]) <= alpha }
 
-    5.  Adaptive Storey pi0 (Gao 2023) on m'' empirical p̃_F:
-            pi0_f, _ = adaptive_storey_pi0(p_tilde_fisher_m_prime, q=alpha)
+    4.  Adaptive Storey pi0 (Gao 2023) on m'' oracle p_Hou (p1 Step 5b):
+            pi0_f, _ = adaptive_storey_pi0(p_hou_m_prime, q=alpha)
 
-    6.  Storey q-values on m'' p̃_F:
-            q_fisher = storey_qvalue(p_tilde_fisher_m_prime, pi0_f)
+    5.  BH reference on m'' oracle Hou Satterthwaite p-values (p1 Step 5a):
+            rejected_bh, _, _ = benjamini_hochberg(p_hou_m_prime, alpha)
 
-    7.  Conjunctive-gate significance ("Both"):
-            is_significant_final = (q_Fisher <= alpha) AND (p_struct_dom <= alpha)
+    6.  Storey q-values on m'' p̃_Hou (p1 Step 5b — primary gate):
+            q_hou = storey_qvalue(p_hou_m_prime, pi0_f)
+
+    7.  Single-gate significance (p1 Step 5c):
+            is_significant_final = (q_Hou <= alpha)
+        Structural evidence is embedded in T_Hou via the W_STRUCT weight.
+        Using p_struct_dom as a second gate would double-penalise patterns
+        (same p-values used as selector and test statistic) and exclude
+        "Discriminative only" patterns that Phase 1 correctly rejects.
+        This matches p1_BPI_17_hou.py Step 5b: is_significant_final =
+        is_significant_discriminative  # and r.is_significant_structural (commented out).
 
 FOUR METHODS COMPARED (at alpha = 0.05)
 -----------------------------------------
-    1.  Fisher-Storey       Adaptive Storey q-values on m' Fisher p-values.
-                            Conjunctive gate: q_Fisher <= alpha AND p_struct_dom <= alpha.  (Primary method.)
+    1.  Hou-Storey           Adaptive Storey q-values on m'' oracle Hou p-values.
+                            T_Hou = -2[W_STRUCT*ln p_s + W_DISC*ln p_d].
+                            Single gate: q_Hou <= alpha.  (Primary method.)
 
-    2.  BH-Fisher           BH step-up on m' Fisher p-values (no pi0 correction).
+    2.  BH-Hou              BH step-up on m'' Hou analytic Satterthwaite p-values (no pi0 correction).
 
     3.  Cecconi ChiSq+BH   Chi-square 2x2 + BH (Cecconi et al., BPM 2021).
 
@@ -120,17 +143,18 @@ FOUR METHODS COMPARED (at alpha = 0.05)
 
 COMPUTATIONAL BUDGET
 ---------------------
-    Original run:     B1=4,000 (label), B2=2,000 (structural)  — full precision
-    Null replicates:  B1=2,000 (label), B2=500  (structural)   — reduced
+    Original run:     B1=1,500 (label), B2=2,000 (structural)  — aligned with p1 CONFIG
+                      (B_label=1500, B_trace=2000, B2_test=B_trace//2=1000)
+    Null replicates:  B1=2,000 (label), B2=500   (structural)  — reduced for feasibility
     B_null:           200 held-out replicates
 
-    Per-replicate cost (double-null):
-        ~2 min  trace shuffling + holds recomputation
-        ~3 min  label permutation test (B1=2000)
-        ~15 min structural permutation test (B2=500, both classes)
-        ~20 min total per replicate
-    
-    Total: 200 x 20 min / 8 cores ~ 8 HPC hours
+    Per-replicate cost (double-null, n=31,509 ~30x Sepsis):
+        ~3 min  trace shuffling + holds recomputation (larger n)
+        ~4 min  label permutation test (B1=2000)
+        ~3 min  structural permutation test (B2=500, both classes)
+        ~10 min total per replicate
+
+    Total: 200 x 10 min / 8 cores ~ 25 min active + ~10 HPC hours total
 
 OUTPUT FILES
 -------------
@@ -139,9 +163,9 @@ OUTPUT FILES
     rq1_results.json         Full results (Tusher failure, pi0, for paper).
     rq1_pattern_arrays.npz   Per-pattern arrays from original run.
 
-Version : 3.1  (empirical Phipson-Smyth calibration for Storey gate; aligned with p1_BPI_17.py v8.0)
+Version : 5.0  (Hou-Storey, single gate, oracle analytic calibration — aligned with p1_BPI_17_hou.py v9.0-HOU-DOUBLY-NULL)
 Author  : Ahmed Nour Abdesselam
-Date    : March 2026
+Date    : May 2026
 """
 
 import sys
@@ -169,8 +193,7 @@ BASE_DIR = os.path.abspath(os.path.join(SCRIPT_DIR, '..', '..'))
 sys.path.insert(0, SCRIPT_DIR)
 sys.path.insert(0, BASE_DIR)
 
-from Experiments.P1_SDSM.p1_BPI_17 import (
-# from p1_BPI_17 import (
+from Experiments.P1_SDSM.p1_BPI_17_hou import (
     # Data loading & preprocessing
     load_and_preprocess_data,
     generate_candidate_patterns,
@@ -182,14 +205,18 @@ from Experiments.P1_SDSM.p1_BPI_17 import (
     # Permutation tests
     run_label_permutation_test,
     run_structural_permutation_test,
-    # Statistical machinery
-    fisher_conjunction_pvalue,
+    # Statistical machinery — Hou (2005) weighted combination
+    hou_combination_statistic,
+    hou_satterthwaite_params,
+    W_DISC,
+    W_STRUCT,
     adaptive_storey_pi0,
     storey_pi0_bootstrap,
     storey_qvalue,
     benjamini_hochberg,
     # Pipeline entry point
     execute_pipeline,
+    generate_outputs,
     # Data structures
     CaseInfo,
     PatternTestResult,
@@ -226,15 +253,19 @@ from eval_utils import (
 
 CSV_PATH       = P1_INPUT_FILE
 PHASE0_JSON    = P1_SPEC_FILE
-RQ1_OUTPUT_DIR = "../Experiments data/Experiments/Results/RQ1_BPI17"
-# RQ1_OUTPUT_DIR = "RQ1_BPI17"
+# RQ1_OUTPUT_DIR = "../Experiments data/Experiments/RQ1_BPI_17"
+RQ1_OUTPUT_DIR = "RQ1_BPI_17"
 
 # Original run budget (full precision, used by execute_pipeline)
-B1_FULL = 4_000
+# Matches p1 CONFIG: B_label=1500, B_trace=2000
+B1_FULL = 1_500
 B2_FULL = 2_000
 
 # Null replicate budget (reduced for feasibility)
 # Phipson-Smyth resolution: 1/(B1_VALID+1) ~ 5e-4, well below alpha=0.05
+# NOTE: B1_VALID=2000 > B1_FULL=1500. Null replicates have finer discriminative resolution
+# than the original run. This is conservative (more accurate null rejection counts)
+# and does not affect the FDR control conclusion. Disclose in paper Methods section.
 B1_VALID = 2_000
 B2_VALID = 500
 
@@ -251,12 +282,19 @@ BASE_SEED = 20260321
 N_JOBS = -1
 
 # Method name constants
-METHOD_FISHER_STOREY = "Fisher-Storey"
-METHOD_BH_FISHER     = "BH-Fisher"
-METHOD_CECCONI       = "Cecconi_ChiSq_BH"
-METHOD_TUSHER        = "Tusher_FlatNull"
+METHOD_HOU_STOREY = "Hou-Storey"
+METHOD_BH_HOU     = "BH-Hou"
+METHOD_CECCONI    = "Cecconi_ChiSq_BH"
+METHOD_TUSHER     = "Tusher_FlatNull"
 
-ALL_METHODS = [METHOD_FISHER_STOREY, METHOD_BH_FISHER, METHOD_CECCONI, METHOD_TUSHER]
+# Seed safety: three seed layers (BASE+b, BASE+100k+b, BASE+300k+b) must not overlap
+assert B_NULL < 100_000, "Seed layers would overlap for B_NULL >= 100,000"
+
+ALL_METHODS = [METHOD_HOU_STOREY, METHOD_BH_HOU, METHOD_CECCONI, METHOD_TUSHER]
+
+# FDR empirical estimator (Pellegrina & Vandin 2018):
+#   FDR_emp(method) = E[|S_b(method)|] / max(R_obs(method), 1)
+#   where |S_b| = rejections in doubly-null replicate b (all false discoveries).
 
 
 # ═══════════════════════════════════════════════════════════════════════════
@@ -275,14 +313,19 @@ def _suppress_output():
 # SECTION 1 — RUN ORIGINAL PIPELINE AND EXTRACT EVERYTHING
 # ═══════════════════════════════════════════════════════════════════════════
 
-def run_original_pipeline() -> dict:
+def run_original_pipeline(n_workers: int = 1) -> dict:
     """
-    Run p1_BPI_17.py's execute_pipeline with full computational budget.
+    Run p1_BPI_17_hou.py's execute_pipeline with full computational budget.
     Returns all objects needed for R_obs computation and RQ1 evaluation.
+
+    Args:
+        n_workers: Forwarded to p1's run_structural_permutation_test via CONFIG.
+                   Safe to set to N_JOBS here because this call is outside any
+                   parallel context — it is the single original-data run.
     """
     print("\n" + "=" * 100)
-    print("SECTION 1 — BPI 2017: ORIGINAL-DATA RUN VIA execute_pipeline()")
-    print(f"  B1={B1_FULL:,}, B2={B2_FULL:,}, alpha={ALPHA}")
+    print("SECTION 1 — BPI-17: ORIGINAL-DATA RUN VIA execute_pipeline()")
+    print(f"  B1={B1_FULL:,}, B2={B2_FULL:,}, alpha={ALPHA}, n_workers={n_workers}")
     print("=" * 100)
 
     t0 = time.time()
@@ -292,8 +335,16 @@ def run_original_pipeline() -> dict:
     orig_config['B_trace']      = B2_FULL
     orig_config['fdr_alpha']    = ALPHA
     orig_config['random_state'] = 42
+    orig_config['n_workers']    = n_workers   # inner B₂ parallelism for structural test
 
     output = execute_pipeline(input_file=CSV_PATH, config=orig_config)
+
+    # ── ADD: write p1's results to BPI17_Results/ ─────────
+    generate_outputs(
+        output['pattern_results'],
+        output['case_data'],
+        output['timing'],
+    )
 
     case_data       = output['case_data']
     pattern_results = output['pattern_results']
@@ -327,7 +378,7 @@ def run_original_pipeline() -> dict:
         'case_ids_sorted':   case_ids_sorted,
         'labels':            labels,
         'wall_seconds':      wall,
-        'tf_null_matrix':    tf_null_mat,          # ← ADD return key
+        'tf_null_matrix':    tf_null_mat,    # Not used in RQ1 — oracle analytic p-values used in null replicates instead.
     }
 
 
@@ -372,7 +423,7 @@ def extract_original_quantities(pattern_results, alpha=ALPHA) -> dict:
     m_prime = len(structural_idx)
 
     print(f"  m = {m}, m' = {m_prime} (structural scope filter at alpha={alpha})")
-    print(f"  Patterns excluded from Fisher-Storey scope: {m - m_prime}")
+    print(f"  Patterns excluded from Hou-Storey scope: {m - m_prime}")
 
     return {
         'p_struct_c0':        p_struct_c0,
@@ -381,7 +432,7 @@ def extract_original_quantities(pattern_results, alpha=ALPHA) -> dict:
         'p_struct_dom':       p_struct_dom,
         'structural_idx':     structural_idx,
         'p_disc_orig':        p_disc_orig,
-        'p_conjunction_orig':          p_conj_orig,      # analytic chi2_4 (BH reference)
+        'p_conjunction_orig':          p_conj_orig,      # analytic Hou Satterthwaite p-value (BH reference)
         'p_conjunction_empirical_orig': p_conj_emp_orig,  # Phipson-Smyth (Storey gate input)
         'delta_obs_orig':     delta_obs,
         'q_sam_orig':         q_sam_orig,
@@ -403,13 +454,22 @@ def compute_R_obs(
     """
     print("\n  Computing R_obs for all four methods...")
 
-    # R_fisher: already reflects p1's conjunctive gate (q_Fisher ≤ α AND p_struct_dom ≤ α → "Both" only)
-    R_fisher = int(np.sum(orig_quantities['is_sig_final_orig']))
+    # R_hou: reflects p1's single gate (is_significant_final = is_significant_discriminative,
+    # i.e. q_Hou ≤ α only — structural evidence embedded in T_Hou via W_STRUCT weight).
+    R_hou = int(np.sum(orig_quantities['is_sig_final_orig']))
 
-    # BH reference uses analytic chi2_4 p-values (per p1 Step 5a)
-    structural_idx   = orig_quantities['structural_idx']
-    p_fisher_m_prime = orig_quantities['p_conjunction_orig'][structural_idx]
-    rejected_bh, _, _ = benjamini_hochberg(p_fisher_m_prime, alpha)
+    # BH-Hou uses analytic Hou Satterthwaite p-values on m'' (per p1 Step 5a).
+    # p_conjunction_orig = chi2.sf(T_Hou / c_real, f_real) where c_real, f_real are
+    # derived from the real-data rho_hat_sd >= 0. Null replicates use c_null=0.52
+    # (rho_sd=0). Since rho_hat_sd > 0 implies c_real > c_null, real-data BH p-values
+    # are stochastically larger (more conservative), so R_bh^real may be smaller than
+    # if the oracle were applied to real data, while null replicates count more rejections.
+    # Net effect: FDR_emp(BH-Hou) may be inflated — BH-Hou can appear to fail FDR control
+    # even if it controls it at the symmetric oracle. This is a disclosure asymmetry,
+    # not a correctness issue for the primary Hou-Storey claim. Disclose in paper Methods.
+    structural_idx     = orig_quantities['structural_idx']
+    p_hou_analytic_obs = orig_quantities['p_conjunction_orig'][structural_idx]
+    rejected_bh, _, _  = benjamini_hochberg(p_hou_analytic_obs, alpha)
     R_bh = int(np.sum(rejected_bh))
 
     D_0, D_1 = split_by_class(case_data)
@@ -420,10 +480,10 @@ def compute_R_obs(
     R_tusher = tusher['k_star']
 
     R_obs = {
-        METHOD_FISHER_STOREY: R_fisher,
-        METHOD_BH_FISHER:     R_bh,
-        METHOD_CECCONI:       R_cecconi,
-        METHOD_TUSHER:        R_tusher,
+        METHOD_HOU_STOREY: R_hou,
+        METHOD_BH_HOU:     R_bh,
+        METHOD_CECCONI:    R_cecconi,
+        METHOD_TUSHER:     R_tusher,
     }
 
     print(f"\n  R_obs (original-data rejections):")
@@ -448,20 +508,20 @@ def run_tusher_analysis(null_delta_matrix, delta_obs, orig_quantities, R_obs) ->
     tau_star = float(sig_deltas.min()) if len(sig_deltas) > 0 else 0.0
 
     structural_idx = orig_quantities['structural_idx']
-    # Use empirical Phipson-Smyth p-values to match p1's actual Storey gate (Step 5b).
-    # Analytic chi2_4 p-values are used only for the BH reference (Step 5a).
-    p_fisher_m_prime = orig_quantities['p_conjunction_empirical_orig'][structural_idx]
-    pi0_approx, _ = adaptive_storey_pi0(p_fisher_m_prime, q=ALPHA)
+    # Use empirical Phipson-Smyth p̃_Hou to match p1's Storey gate (Step 5b).
+    # Analytic Hou Satterthwaite p-values are used only for the BH reference (Step 5a).
+    p_hou_emp_m_prime = orig_quantities['p_conjunction_empirical_orig'][structural_idx]
+    pi0_approx, _ = adaptive_storey_pi0(p_hou_emp_m_prime, q=ALPHA)
 
     report = build_tusher_failure_report(
         null_delta_matrix=null_delta_matrix,
         delta_obs=delta_obs,
         constraint_types=orig_quantities['constraint_types'],
-        k_star_storey=R_obs[METHOD_FISHER_STOREY],
+        k_star_storey=R_obs[METHOD_HOU_STOREY],
         tau_star_storey=tau_star,
         pi0_hat=pi0_approx,
         alpha=ALPHA,
-        log_name="BPI17",
+        log_name="BPI_17",
     )
 
     print(f"\n  sigma_null heterogeneity by constraint family:")
@@ -471,7 +531,7 @@ def run_tusher_analysis(null_delta_matrix, delta_obs, orig_quantities, R_obs) ->
     print(f"\n  sigma_null ratio: {report.sigma_null_ratio:.1f}x")
     print(f"  rho_inf:          {report.rho_inf:.1f}x")
     print(f"  k*_Tusher:        {report.k_star_tusher}")
-    print(f"  k*_Fisher-Storey: {report.k_star_storey}")
+    print(f"  k*_Hou-Storey:    {report.k_star_storey}")
 
     return report
 
@@ -490,10 +550,10 @@ def run_pi0_analysis(orig_quantities) -> Pi0EstimateWithCI:
         p_disc=orig_quantities['p_disc_orig'],
         p_struct_c0=orig_quantities['p_struct_c0'],
         p_struct_c1=orig_quantities['p_struct_c1'],
-        log_name="BPI17",
+        log_name="BPI_17",
     )
 
-    print(f"\n  pi0 estimates (BPI 2017):")
+    print(f"\n  pi0 estimates (BPI-17):")
     print(f"    Discriminative (m={pi0_est.m_disc}): pi0={pi0_est.pi0_disc:.4f}  "
           f"sensitivity [{pi0_est.pi0_disc_sensitivity_lo:.3f}, "
           f"{pi0_est.pi0_disc_sensitivity_hi:.3f}]")
@@ -515,10 +575,10 @@ def run_pi0_analysis(orig_quantities) -> Pi0EstimateWithCI:
 # This is the scientific core.  Each null replicate applies:
 #   1. Within-trace activity shuffling  (nullifies structural axis)
 #   2. Label permutation                (nullifies discriminative axis)
-#   3. Fresh recomputation of holds, p_struct, p_disc, Fisher, Storey
+#   3. Fresh recomputation of holds, p_struct, p_disc, Hou oracle p, Storey
 #
 # Both p_struct and p_disc are U(0,1) under this double null,
-# so T_Fisher ~ chi2(4) as required.
+# so T_Hou ~ c·χ²_f (Satterthwaite, rho_sd=0) as required.
 # ═══════════════════════════════════════════════════════════════════════════
 
 def _build_doubly_nullified_log(
@@ -588,12 +648,12 @@ def run_doubly_null_replicate(
     B2_internal: int,
     alpha: float,
     random_state: int,
-    tf_null_matrix: np.ndarray | None = None,
+    n_workers: int = 1,   # MUST stay 1 — this function is called from within a loky worker
 ) -> dict:
     """
     Run all four methods on a single DOUBLY-NULLIFIED held-out replicate.
 
-    This faithfully reproduces p1_BPI_17.py's decision procedure on a log
+    This faithfully reproduces p1_BPI_17_hou.py's decision procedure on a log
     where BOTH temporal structure AND class-label association have been
     destroyed by permutation.
 
@@ -610,33 +670,24 @@ def run_doubly_null_replicate(
         subsets of the doubly-nullified log:
             -> fresh p_struct_c0, p_struct_c1
     5.  Determine dominant class from shuffled prevalences.
-    6.  Compute Fisher conjunction: p_Fisher = chi2.sf(-2*(ln p_s + ln p_d), 4)
-    7.  Apply structural scope filter: m' = { i : min(p_s0, p_s1) <= alpha }
-    8.  Fisher-Storey: adaptive_storey_pi0 on m' Fisher -> storey_qvalue
-        -> is_significant = (q_Fisher <= alpha) AND (p_struct_dom <= alpha) — CONJUNCTIVE GATE
-    9.  BH-Fisher: benjamini_hochberg on m' Fisher p-values
-    10. Cecconi: chi-square + BH on freshly-computed holds_all
-    11. Tusher: flat-null SAM on null_delta_matrix from step 3
+    6.  Compute Hou (2005) weighted conjunction + oracle analytic p-value:
+            T_Hou = -2[W_STRUCT*ln p_s + W_DISC*ln p_d]
+            p_Hou^oracle = chi2.sf(T_Hou / c, f)   c=W_S²+W_D², f=2/c, rho_sd=0
+            The real-data tf_null_matrix is NOT used: it contains T_Hou values
+            under the real data distribution (with genuine signal), creating a
+            rightward shift that would inflate null replicate p-values and bias
+            FDR_emp upward. The oracle is exact under the double-null.
+    7.  Apply structural scope filter: m'' = { i : min(p_s0_screen, p_s1_screen) <= alpha }
+    8.  Hou-Storey: adaptive_storey_pi0 on m'' oracle p_Hou -> storey_qvalue
+        -> is_significant = (q_Hou <= alpha)  — SINGLE GATE, matches p1 is_significant_final.
+    9.  BH-Hou: benjamini_hochberg on m'' oracle p_Hou (same p-values, no pi0 correction).
+    10. Cecconi: chi-square + BH on freshly-computed holds_all.
+    11. Tusher: flat-null SAM on null_delta_matrix from step 3.
 
-    NOTE ON EMPIRICAL CALIBRATION:
-    p1_BPI_17.py Step 5b uses Phipson-Smyth empirically-calibrated p-values
-    (compute_double_null_tf_matrix + empirical_fisher_pvalue) to correct for
-    potential anti-conservatism of the chi2_4 approximation on real data
-    (Brown 1975: Fisher combination is anti-conservative when p_struct and
-    p_disc are positively correlated, as can occur under the real distribution).
-
-    Under the double-null (sigma_label ∘ sigma_trace):
-        p_struct^(b) ~ U(0,1)  and  p_disc^(b) ~ U(0,1)  exactly and independently.
-    Therefore T_F^(b) = -2(ln p_struct + ln p_disc) ~ chi2(4) EXACTLY.
-    The analytic chi2_4 p-value IS the oracle null p-value here; empirical
-    calibration would be equivalent in expectation (by the law of large numbers
-    as B_null_inner → ∞) but is computationally prohibitive and scientifically
-    redundant.
-
-    Monotonicity argument: both p̃_F (Phipson-Smyth) and p_F^analytic (chi2_4)
-    are strictly monotone-decreasing in T_F. Therefore the rejection set
-    {i: q̃_F(i) <= alpha} equals {i: q_F^analytic(i) <= alpha} for any threshold,
-    and FDR_emp estimated here correctly characterises the real procedure.
+    Monotonicity argument: p_Hou^oracle is strictly monotone-decreasing in T_Hou,
+    so {i: q_Hou^oracle(i) <= alpha} equals the rejection set that p̃_Hou (empirically
+    calibrated against a proper double-null reference) would produce. FDR_emp
+    estimated here correctly characterises the real Hou-Storey procedure.
 
     Args:
         permuted_labels:  (n,) permuted binary labels.
@@ -649,7 +700,7 @@ def run_doubly_null_replicate(
         random_state:     RNG seed for this replicate.
 
     Returns:
-        Dict[method_name -> int] — rejection counts for all four methods.
+        Dict with rejection counts for all four methods plus '__m_prime__' key.
     """
     m = len(candidates_all)
     rs = random_state
@@ -688,19 +739,13 @@ def run_doubly_null_replicate(
     with _suppress_output():
         struct_results_0 = run_structural_permutation_test(
             D_0, candidates_all, class_label=0, B2=B2_internal, random_state=rs + 1,
+            n_workers=n_workers,
         )
         struct_results_1 = run_structural_permutation_test(
             D_1, candidates_all, class_label=1, B2=B2_internal, random_state=rs + 2,
+            n_workers=n_workers,
         )
 
-    # p_struct_c0 = np.array([
-    #     struct_results_0[spec]['p_structural'] if spec in struct_results_0 else 1.0
-    #     for spec in candidates_all
-    # ])
-    # p_struct_c1 = np.array([
-    #     struct_results_1[spec]['p_structural'] if spec in struct_results_1 else 1.0
-    #     for spec in candidates_all
-    # ])
     p_struct_screen_c0 = np.array([
         struct_results_0[spec]['p_structural_screen'] if spec in struct_results_0 else 1.0
         for spec in candidates_all
@@ -731,23 +776,28 @@ def run_doubly_null_replicate(
     dominant = np.where(prev1 >= prev0, 1, 0)
     p_struct_dom_test = np.where(dominant == 1, p_struct_test_c1, p_struct_test_c0)
 
-    # ── Step 6: Fisher conjunction p-values ──────────────────────────────
-    # Both p_struct_dom and p_disc are fresh from the doubly-nullified log.
-    # Under double-null: T = -2(ln p_s + ln p_d) ~ chi2(4) exactly.
-    # Analytic chi2_4 is the oracle null p-value here (see docstring NOTE).
-    _eps     = 1e-300
-    _ps      = np.clip(p_struct_dom_test, _eps, 1.0)
-    _pd      = np.clip(p_disc,            _eps, 1.0)
-    tf_obs_b = -2.0 * (np.log(_ps) + np.log(_pd))
-    if tf_null_matrix is not None:
-        _count_geq = (tf_null_matrix >= tf_obs_b[np.newaxis, :]).sum(axis=0)
-        _B_calib   = tf_null_matrix.shape[0]
-        p_fisher   = (1.0 + _count_geq) / (_B_calib + 1.0)   # Phipson-Smyth
-    else:
-        p_fisher = fisher_conjunction_pvalue(p_struct_dom_test, p_disc)
+    # ── Step 6: Hou (2005) weighted conjunction + oracle analytic p-value ──
+    # T_Hou(p) = -2[W_STRUCT * ln p_s + W_DISC * ln p_d]  (precision-proportional)
+    #
+    # Oracle null p-value under double-null (rho_sd = 0, independence):
+    #   p_s ~ U(0,1), p_d ~ U(0,1) => T_Hou ~ c·χ²_f (Satterthwaite)
+    #   c = W_STRUCT² + W_DISC², f = 2/c
+    # We do NOT use the real-data tf_null_matrix here. Passing it would create
+    # a distributional mismatch: the real data has genuine signal (tf rows are
+    # right-shifted), whereas null replicates are fully nullified. The oracle
+    # analytic p-value is exact under double-null and avoids this contamination.
+    # Monotonicity: p_Hou^oracle is strictly decreasing in T_Hou, so the
+    # rejection set {i: q_Hou(i) <= alpha} is identical to what p̃_Hou would
+    # give if calibrated against a proper double-null reference distribution.
+    _c_null, _f_null = hou_satterthwaite_params(W_STRUCT, W_DISC, rho_sd=0.0)
+    # hou_combination_statistic clips inputs to [eps=1e-300, 1.0] internally before
+    # taking logs, so passing raw Phipson-Smyth p-values (which may be 0) is safe.
+    tf_obs_b = hou_combination_statistic(p_struct_dom_test, p_disc,
+                                         w_s=W_STRUCT, w_d=W_DISC)
+    p_hou = np.clip(stats.chi2.sf(tf_obs_b / _c_null, df=_f_null), 1e-300, 1.0)
 
     # ── Step 7: structural scope filter (freshly computed) ───────────────
-    # m' = patterns where at least one class has structural evidence.
+    # m'' = patterns where at least one class shows structural evidence (screen half).
     structural_idx = [
         i for i in range(m)
         if min(p_struct_screen_c0[i], p_struct_screen_c1[i]) <= alpha
@@ -755,25 +805,29 @@ def run_doubly_null_replicate(
     m_prime = len(structural_idx)
 
     if m_prime > 0:
-        p_fisher_m_prime = p_fisher[structural_idx]
+        p_hou_m_prime = p_hou[structural_idx]
     else:
-        p_fisher_m_prime = np.array([])
+        p_hou_m_prime = np.array([])
 
-    # ── Method 1: Fisher-Storey (primary) ────────────────────────────────
-    # Conjunctive gate: q_Fisher <= alpha  AND  p_struct_dom_test <= alpha ("Both").
+    # ── Method 1: Hou-Storey (primary) — SINGLE GATE ─────────────────────
+    # Single gate: q_Hou <= alpha only.
+    # Structural evidence is embedded in T_Hou via the W_STRUCT weight term.
+    # A second structural gate would double-penalise patterns (same p-values
+    # used in T_Hou and as a hard threshold) and incorrectly exclude
+    # "Discriminative only" patterns that Phase 1 legitimately rejects.
+    # This matches p1_BPI_17_hou.py: is_significant_final = is_significant_discriminative.
     if m_prime > 0:
-        pi0_f, _ = adaptive_storey_pi0(p_fisher_m_prime, q=alpha)
-        q_fisher = storey_qvalue(p_fisher_m_prime, pi0_f)
-        p_struct_dom_test_m_prime = p_struct_dom_test[structural_idx]
-        n_fisher_storey = int(np.sum(
-            (q_fisher <= alpha) & (p_struct_dom_test_m_prime <= alpha)
-        ))
+        pi0_f, _ = adaptive_storey_pi0(p_hou_m_prime, q=alpha)
+        q_hou = storey_qvalue(p_hou_m_prime, pi0_f)
+        n_hou_storey = int(np.sum(q_hou <= alpha))
     else:
-        n_fisher_storey = 0
+        n_hou_storey = 0
 
-    # ── Method 2: BH on m' Fisher p-values (reference) ──────────────────
+    # ── Method 2: BH-Hou on m'' oracle Hou p-values (reference) ──────────
+    # Both Method 1 and Method 2 use the same oracle p_hou values from Step 6.
+    # They differ only in the FDR procedure: Storey q-values vs BH step-up.
     if m_prime > 0:
-        rejected_bh, _, _ = benjamini_hochberg(p_fisher_m_prime, alpha)
+        rejected_bh, _, _ = benjamini_hochberg(p_hou_m_prime, alpha)
         n_bh = int(np.sum(rejected_bh))
     else:
         n_bh = 0
@@ -800,10 +854,11 @@ def run_doubly_null_replicate(
     n_tusher = tusher_result['k_star']
 
     return {
-        METHOD_FISHER_STOREY: n_fisher_storey,
-        METHOD_BH_FISHER:     n_bh,
-        METHOD_CECCONI:       n_cecconi,
-        METHOD_TUSHER:        n_tusher,
+        METHOD_HOU_STOREY:  n_hou_storey,
+        METHOD_BH_HOU:      n_bh,
+        METHOD_CECCONI:     n_cecconi,
+        METHOD_TUSHER:      n_tusher,
+        '__m_prime__':      m_prime,
     }
 
 
@@ -815,7 +870,6 @@ def _worker(
     b, permuted_labels_b,
     case_data_orig, candidates_all, case_ids_sorted,
     B1_internal, B2_internal, alpha,
-    tf_null_matrix,
 ):
     """Joblib worker for a single doubly-null replicate."""
     rs = BASE_SEED + 100_000 + b
@@ -828,14 +882,13 @@ def _worker(
         B2_internal=B2_internal,
         alpha=alpha,
         random_state=rs,
-        tf_null_matrix = tf_null_matrix,    # ← ADD
+        n_workers=1,    # outer Parallel is active — must not spawn nested processes
     )
 
 
 def run_null_permutations(
     case_data, candidates_all, case_ids_sorted, labels,
     n_jobs=N_JOBS,
-    tf_null_matrix = None,
 ) -> dict:
     """
     Run B_NULL doubly-nullified held-out permutations in parallel.
@@ -845,12 +898,18 @@ def run_null_permutations(
         2.  Build doubly-nullified log (shuffle traces + permute labels).
         3.  Recompute holds, structural p-values, discriminative p-values.
         4.  Run all four methods via run_doubly_null_replicate.
-        5.  Record |S_b| for each method.
+        5.  Record |S_b| for each method and m' (scope-filtered size).
 
-    Seed architecture (three independent layers):
-        BASE_SEED + b                held-out label permutation
-        BASE_SEED + 100_000 + b      internal Phase 1 seeds (label perm test)
+    Seed architecture (three independent layers — no overlap for B_NULL < 100,000):
+        BASE_SEED + b                    held-out label permutation
+        BASE_SEED + 100_000 + b          internal Phase 1 seeds (label perm test)
         BASE_SEED + 100_000 + b + 200_000  trace shuffling
+
+    m' diagnostic: under the double-null, both structural screen p-values
+    are U(0,1), so P(min(p_c0, p_c1) <= alpha) ≈ 1-(1-alpha)^2 ≈ 0.0975.
+    For m=1000 patterns, E[m'] ≈ 97. If >10% of replicates have m'=0,
+    the FDR estimate is confounded by structural zeroing and is reported
+    separately in the 'm_prime_distribution' output key.
     """
     print("\n" + "=" * 100)
     print("SECTION 6: PARALLEL DOUBLY-NULL HELD-OUT PERMUTATIONS")
@@ -860,7 +919,8 @@ def run_null_permutations(
     print(f"    1. sigma_trace: shuffle activities within each trace")
     print(f"    2. sigma_label: permute class labels (preserving marginals)")
     print(f"    3. Recompute holds, p_struct (B2={B2_VALID}), p_disc (B1={B1_VALID})")
-    print(f"    4. Fisher conjunction + Adaptive Storey on fresh m'")
+    print(f"    4. Oracle Hou p-value + Adaptive Storey on fresh m''")
+    print(f"    5. Single gate: q_Hou <= alpha  (matches p1 is_significant_final)")
     print("=" * 100)
 
     t0 = time.time()
@@ -875,7 +935,7 @@ def run_null_permutations(
             f"Replicate {i}: marginals not preserved!"
     print(f"  Marginal check passed (n+={int(labels.sum())} preserved)")
 
-    est_per_rep = 20  # minutes, rough estimate
+    est_per_rep = 10  # minutes, rough estimate for BPI-17 (n=31,509, ~30x Sepsis)
     est_total = B_NULL * est_per_rep / max(abs(n_jobs) if n_jobs != -1 else 8, 1)
     print(f"\n  Estimated wall time: ~{est_total:.0f} min ({est_total/60:.1f} hours)")
     print(f"  Starting {B_NULL} parallel replicates (n_jobs={n_jobs})...")
@@ -889,20 +949,30 @@ def run_null_permutations(
             b, permuted_labels_all[b],
             case_data, candidates_all, case_ids_sorted,
             B1_VALID, B2_VALID, ALPHA,
-            tf_null_matrix,   # ← ADD
         )
         for b in range(B_NULL)
     )
 
-    # Aggregate null counts
+    # Aggregate null counts and m' distribution
     null_counts = {m_name: np.zeros(B_NULL, dtype=int) for m_name in ALL_METHODS}
+    m_prime_per_rep = np.zeros(B_NULL, dtype=int)
     for b, counts in enumerate(replicate_results):
-        for method, count in counts.items():
-            null_counts[method][b] = count
+        m_prime_per_rep[b] = counts.pop('__m_prime__', -1)
+        for method in ALL_METHODS:
+            null_counts[method][b] = counts[method]
 
     wall = time.time() - t0
 
+    n_zero_m_prime = int(np.sum(m_prime_per_rep == 0))
     print(f"\n  Doubly-null permutations complete. Wall time: {wall:.1f}s ({wall/60:.1f} min)")
+    print(f"\n  m' (scope-filtered) distribution across {B_NULL} replicates:")
+    print(f"    mean={m_prime_per_rep.mean():.1f}, std={m_prime_per_rep.std():.1f}, "
+          f"min={m_prime_per_rep.min()}, max={m_prime_per_rep.max()}, "
+          f"zeros={n_zero_m_prime} ({n_zero_m_prime/B_NULL*100:.1f}%)")
+    if n_zero_m_prime / B_NULL > 0.10:
+        print(f"  WARNING: >{n_zero_m_prime/B_NULL*100:.0f}% of replicates have m'=0 — "
+              f"FDR_emp may be confounded by structural zeroing.")
+
     print(f"\n  Null rejection counts (mean +/- std over {B_NULL} replicates):")
     for method in ALL_METHODS:
         arr = null_counts[method]
@@ -910,8 +980,9 @@ def run_null_permutations(
               f"(max={arr.max()}, zeros={np.sum(arr==0)})")
 
     return {
-        'null_counts': null_counts,
-        'wall_seconds': wall,
+        'null_counts':          null_counts,
+        'wall_seconds':         wall,
+        'm_prime_distribution': m_prime_per_rep,
     }
 
 
@@ -923,6 +994,7 @@ def compute_and_save_metrics(
     null_counts, R_obs_dict, orig_quantities, pi0_est, tusher_report,
     original_wall, perm_wall,
     null_delta_matrix, delta_obs,
+    m_prime_distribution=None,
 ):
     """
     Compute FDR_emp, PCER_emp, FWER_emp with BCa 95% CI.
@@ -936,12 +1008,17 @@ def compute_and_save_metrics(
     m_total = orig_quantities['m']
 
     all_null_runs = {m_name: list(arr) for m_name, arr in null_counts.items()}
+
+    if R_obs_dict[METHOD_HOU_STOREY] == 0:
+        print("  WARNING: R_hou=0 on original data — FDR_emp is vacuously 0 "
+              "(no rejections to penalise; cannot distinguish control from power failure).")
+
     results_df = build_rq1_results_df(
         all_null_runs, R_obs_dict, m_total,
-        alpha=ALPHA, log_name="BPI17",
+        alpha=ALPHA, log_name="BPI_17",
     )
 
-    print(f"\n  FDR Validation Results (BPI 2017, B_null={B_NULL}, double-null protocol):")
+    print(f"\n  FDR Validation Results (BPI-17, B_null={B_NULL}, double-null protocol):")
     print(f"  {'─'*95}")
     print(f"  {'Method':25s} {'R_obs':>6s} {'FDR_emp':>8s} {'95% CI':>22s} "
           f"{'PCER':>8s} {'FWER':>8s} {'FDR<=a':>7s}")
@@ -977,6 +1054,18 @@ def compute_and_save_metrics(
     null_df.to_csv(null_path)
     print(f"  Saved: {null_path}")
 
+    # FILE 2b: rq1_m_prime_distribution.csv — m' per null replicate diagnostic.
+    # Under double-null, E[m'] ≈ m·(1-(1-α)²) ≈ 0.0975·m.
+    # >10% zero replicates signals confounding by structural zeroing.
+    if m_prime_distribution is not None:
+        mp = m_prime_distribution
+        mp_df = pd.DataFrame({'replicate_b': np.arange(B_NULL), 'm_prime': mp})
+        mp_path = os.path.join(RQ1_OUTPUT_DIR, "rq1_m_prime_distribution.csv")
+        mp_df.to_csv(mp_path, index=False)
+        n_zero = int(np.sum(mp == 0))
+        print(f"  Saved: {mp_path}  "
+              f"(mean={mp.mean():.1f}, zeros={n_zero}/{B_NULL}={n_zero/B_NULL*100:.1f}%)")
+
     # FILE 3: rq1_results.json
     json_path = os.path.join(RQ1_OUTPUT_DIR, "rq1_results.json")
     save_rq1_results_json(
@@ -985,7 +1074,7 @@ def compute_and_save_metrics(
         pi0_estimate=pi0_est,
         tusher_report=tusher_report,
         output_path=json_path,
-        log_name="BPI17",
+        log_name="BPI_17",
     )
 
     with open(json_path, 'r') as f:
@@ -1006,62 +1095,76 @@ def compute_and_save_metrics(
             'Guarantees p_disc ~ U(0,1) by Fisher randomization.'
         ),
         'joint_null': (
-            'Under both operations, T_Fisher = -2(ln p_struct + ln p_disc) ~ chi2(4). '
+            'Under both operations, T_Hou = -2[W_STRUCT*ln p_struct + W_DISC*ln p_disc] '
+            f'where W_STRUCT={W_STRUCT}, W_DISC={W_DISC} (precision-proportional, Hou 2005). '
             'Every rejection in a doubly-nullified replicate is a false positive '
             'on BOTH axes simultaneously.'
         ),
         'why_label_only_fails': (
             'Label-only permutation preserves real temporal structure in traces. '
             'For patterns with genuine within-log temporal regularity (e.g. '
-            'AlternateResponse(A_Submitted, O_Created) in BPI 2017), structural p-values '
-            'remain small in any random class partition. The Fisher statistic '
-            'is then T = [non-null chi2(2)] + [null chi2(2)], which is stochastically '
-            'larger than chi2(4), inflating FDR_emp beyond alpha.'
+            'Response(O_Create Offer, O_Sent) in BPI-17 offer lifecycle), structural '
+            'p-values remain small in any random class partition. The Hou statistic '
+            'T_Hou = -2[0.40*ln p_struct + 0.60*ln p_disc] is then stochastically '
+            'larger than c·chi2_f (c=0.52, f≈3.846) because the 0.40*(-2 ln p_struct) '
+            'term is inflated (p_struct ≠ U(0,1)), inflating FDR_emp beyond alpha.'
         ),
     }
     full_json['alignment_with_p1'] = {
         'conjunction_statistic': (
-            'T_F = -2*(ln p_struct + ln p_disc) scored analytically; '
-            'converted to Phipson-Smyth empirical p̃_F for real-data Storey gate. '
-            'Null replicates use analytic chi2_4 directly (oracle under double-null).'
+            'T_Hou = -2*(W_STRUCT*ln p_struct + W_DISC*ln p_disc), '
+            f'W_STRUCT={W_STRUCT}, W_DISC={W_DISC} (Hou 2005, precision-proportional, Pepe & Fleming 1989). '
+            'Oracle analytic p-value chi2.sf(T_Hou/c, f) used for both Storey gate and BH reference '
+            'in null replicates (c=W_S²+W_D², f=2/c, rho_sd=0 under double-null). '
+            'Real data run uses empirical Phipson-Smyth p̃_Hou (tf_null_matrix calibration). '
+            'Monotonicity guarantees the rejection sets are identical.'
         ),
         'significance_gate': (
-            'SINGLE: q_Fisher <= alpha on m\'\' scope-filtered patterns. '
-            'Real run: q computed from empirical p̃_F. '
-            'Null replicates: q computed from analytic chi2_4 (equivalent by monotonicity).'
+            'SINGLE gate: q_Hou <= alpha only. '
+            'Matches p1_BPI_17_hou.py is_significant_final = is_significant_discriminative. '
+            'Structural evidence is embedded in T_Hou via the W_STRUCT weight. '
+            'A conjunctive second gate (p_struct_dom <= alpha) would double-penalise patterns '
+            'and inflate R_obs vs null replicate counts, deflating FDR_emp artificially.'
         ),
-        'pi0_estimator': 'Gao (2023) Adaptive Storey on empirical p̃_F (real run) / analytic chi2_4 (null replicates)',
-        'bh_reference': 'BH on analytic chi2_4 p-values (both real run and null replicates)',
+        'pi0_estimator': (
+            'Gao (2023) Adaptive Storey on oracle Hou p-values (m\'\' scope-filtered). '
+            'Under double-null, all patterns are null so pi0_hat -> 1.0 in expectation.'
+        ),
+        'bh_reference': (
+            'BH-Hou on oracle Hou Satterthwaite p-values chi2.sf(T_Hou/c, f). '
+            'Same oracle p-values as Method 1; differs only in FDR procedure (no pi0 correction).'
+        ),
         'fdr_scope': 'm\'\' sample-split scope-filtered (screen p-values, freshly computed per replicate)',
-        'structural_role': 'Embedded inside Fisher combination + fresh screen/scope filter',
+        'structural_role': 'Embedded inside T_Hou via W_STRUCT weight + fresh screen/scope filter',
         'holds_recomputation': 'Per replicate on shuffled traces',
         'structural_pvalues': 'Freshly computed per replicate (B2_VALID per class)',
+        'tf_null_matrix_usage': (
+            'NOT passed to null replicates. The real-data tf_null_matrix contains T_Hou values '
+            'under the real data distribution (with genuine signal), which are right-shifted '
+            'relative to the double-null distribution. Using it to calibrate null replicate '
+            'p-values creates a distributional mismatch that would bias FDR_emp upward. '
+            'The oracle analytic p-value is exact under double-null and avoids this issue.'
+        ),
     }
     full_json['null_replicate_equivalence'] = {
         'claim': (
             'Under the double-null (sigma_label ∘ sigma_trace), '
-            'p_struct ~ U(0,1) and p_disc ~ U(0,1) independently, '
-            'so T_F ~ chi2(4) exactly. The analytic chi2_4 p-value is the '
-            'oracle null p-value; no empirical calibration is needed.'
+            'p_struct ~ U(0,1) and p_disc ~ U(0,1) independently. '
+            'T_Hou^(b) ~ c·χ²_f (Satterthwaite, rho_sd=0) — oracle under double-null. '
+            'Oracle p-value chi2.sf(T_Hou/c, f) used for Storey gate and BH in null replicates.'
         ),
         'monotonicity_argument': (
-            'Both p̃_F (Phipson-Smyth) and p_F^analytic (chi2_4) are '
-            'strictly monotone-decreasing in T_F. Therefore the rejection set '
-            '{i: q̃_F(i) <= alpha} equals {i: q_F^analytic(i) <= alpha} '
-            'for any threshold, and FDR_emp estimated from null replicates '
-            'using analytic p-values correctly characterises the real procedure.'
+            'p_Hou^oracle is strictly monotone-decreasing in T_Hou. Therefore the rejection '
+            'set {i: q_Hou^oracle(i) <= alpha} equals the set that p̃_Hou (empirically '
+            'calibrated against a proper double-null reference) would produce. FDR_emp '
+            'estimated from null replicates correctly characterises the real Hou-Storey procedure.'
         ),
-        'computational_argument': (
-            f'Running compute_double_null_tf_matrix inside each of B_NULL={B_NULL} '
-            'null replicates would require B_NULL * B_null_inner sub-replicates, '
-            'which is computationally prohibitive and scientifically redundant '
-            'given the monotonicity argument above.'
-        ),
-        'brown_1975_context': (
-            'Empirical calibration is needed in the REAL data run because '
-            'p_struct and p_disc may be positively correlated under the real data '
-            'distribution (Brown 1975), making the analytic chi2_4 anti-conservative. '
-            'Under the double-null this correlation is destroyed by construction.'
+        'why_not_tf_null_matrix': (
+            'The real-data tf_null_matrix was built under the real data distribution with '
+            'genuine signal present. Its T_Hou rows are stochastically larger than the '
+            'double-null distribution. Ranking null replicate statistics against it would '
+            'yield systematically conservative p-values (too large), biasing FDR_emp upward '
+            'and making the FDR control claim appear stronger than it actually is.'
         ),
     }
     full_json['timing'] = {
@@ -1075,7 +1178,8 @@ def compute_and_save_metrics(
         'B1_VALID': B1_VALID, 'B2_VALID': B2_VALID,
         'ALPHA': ALPHA, 'BASE_SEED': BASE_SEED,
         'N_JOBS': N_JOBS,
-        'log': 'BPI17',
+        'log': 'BPI_17', 'p1_version': 'p1_BPI_17_hou.py v9.0-HOU-DOUBLY-NULL',
+        'conjunction': 'Hou (2005) weighted', 'W_DISC': W_DISC, 'W_STRUCT': W_STRUCT,
         'm': orig_quantities['m'],
         'm_prime_original': orig_quantities['m_prime'],
     }
@@ -1118,12 +1222,12 @@ def compute_and_save_metrics(
     np.savez_compressed(
         arrays_path,
         p_discriminative          = orig_quantities['p_disc_orig'],
-        p_conjunction             = orig_quantities['p_conjunction_orig'],        # analytic chi2_4
+        p_conjunction             = orig_quantities['p_conjunction_orig'],        # analytic Hou Satterthwaite
         p_conjunction_empirical   = orig_quantities['p_conjunction_empirical_orig'],  # Phipson-Smyth
         p_structural_c0           = orig_quantities['p_struct_c0'],
         p_structural_c1   = orig_quantities['p_struct_c1'],
         p_structural_dom  = orig_quantities['p_struct_dom'],
-        q_fisher          = orig_quantities['q_sam_orig'],
+        q_hou             = orig_quantities['q_sam_orig'],
         q_structural_dom  = orig_quantities['q_struct_dom_orig'],
         delta_obs         = orig_quantities['delta_obs_orig'],
         sigma_null        = sigma_per_pattern,
@@ -1142,9 +1246,9 @@ def compute_and_save_metrics(
 
 def main():
     print("\n" + "=" * 100)
-    print("RQ1 — FDR CONTROL VALIDITY: BPI CHALLENGE 2017")
+    print("RQ1 — FDR CONTROL VALIDITY: BPI-17 (Offer-Lifecycle Mildly Imbalanced Log)")
     print("  Double-Null Protocol: sigma_label ∘ sigma_trace")
-    print("  Aligned with p1_BPI_17.py v8.0 (empirical Phipson-Smyth Storey gate)")
+    print("  Aligned with p1_BPI_17_hou.py v9.0 (Hou 2005 weighted conjunction, empirical Phipson-Smyth)")
     print("=" * 100)
     print(f"  Timestamp:  {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
     print(f"  B_null={B_NULL}, B1_full={B1_FULL}, B2_full={B2_FULL}")
@@ -1156,20 +1260,20 @@ def main():
     print(f"    2. sigma_label:  permute class labels (preserving marginals)")
     print(f"       -> p_disc ~ U(0,1)")
     print(f"    3. Fresh recomputation: holds + structural + discriminative")
-    print(f"       -> T_Fisher = -2(ln p_s + ln p_d) ~ chi2(4)")
-    print(f"\n  Decision procedure (faithful to p1_BPI_17.py):")
-    print(f"    Conjunction: T_F = -2(ln p_s + ln p_d); empirical Phipson-Smyth p\u0303_F (real run)")
-    print(f"                 Analytic chi2_4 for null replicates (oracle under double-null)")
-    print(f"    Pi0:         Adaptive Storey (Gao 2023) on empirical p\u0303_F")
-    print(f"    Gate:        SINGLE \u2014 q\u0303_Fisher <= alpha on m'' scope-filtered patterns")
-    print(f"    BH ref:      Analytic chi2_4 p-values (real run and null replicates)")
+    print(f"       -> T_Hou = -2[{W_STRUCT}*ln p_s + {W_DISC}*ln p_d] ~ c\u00b7\u03c7\u00b2_f (c={W_STRUCT**2+W_DISC**2:.2f}, f={2/(W_STRUCT**2+W_DISC**2):.2f})")
+    print(f"\n  Decision procedure (faithful to p1_BPI_17_hou.py v9.0):")
+    print(f"    Conjunction: T_Hou = -2[{W_STRUCT}*ln p_s + {W_DISC}*ln p_d]  (Hou 2005, precision-proportional)")
+    print(f"    Oracle p:    chi2.sf(T_Hou/c, f), rho_sd=0 (exact under double-null; no tf_null_matrix)")
+    print(f"    Pi0:         Adaptive Storey (Gao 2023) on oracle Hou p-values (m'' scope-filtered)")
+    print(f"    Gate:        SINGLE \u2014 q_Hou <= alpha  (matches p1 is_significant_final)")
+    print(f"    BH ref:      Same oracle p-values, BH step-up (no pi0 correction)")
     print(f"    Structural:  Freshly computed per replicate (not cached)")
     print("=" * 100)
 
     t_total = time.time()
 
     # ── Section 1: run original pipeline ─────────────────────────────────
-    orig = run_original_pipeline()
+    orig = run_original_pipeline(n_workers=N_JOBS)
     case_data         = orig['case_data']
     candidates_all    = orig['candidates_all']
     pattern_results   = orig['pattern_results']
@@ -1198,10 +1302,10 @@ def main():
     # ── Section 6: parallel doubly-null permutations ─────────────────────
     perm_output = run_null_permutations(
         case_data, candidates_all, case_ids_sorted, labels,
-        tf_null_matrix=orig['tf_null_matrix'],   # ← ADD
     )
-    null_counts = perm_output['null_counts']
-    perm_wall   = perm_output['wall_seconds']
+    null_counts        = perm_output['null_counts']
+    perm_wall          = perm_output['wall_seconds']
+    m_prime_dist       = perm_output['m_prime_distribution']
 
     # ── Section 7: compute & save metrics ────────────────────────────────
     results_df, fdr_tests = compute_and_save_metrics(
@@ -1209,19 +1313,21 @@ def main():
         pi0_est, tusher_report,
         original_wall, perm_wall,
         null_delta_matrix, delta_obs,
+        m_prime_distribution=m_prime_dist,
     )
 
     # ── Final summary ────────────────────────────────────────────────────
     total_wall = time.time() - t_total
 
     print(f"\n{'='*100}")
-    print("RQ1 — BPI 2017 COMPLETE (Double-Null Protocol)")
+    print("RQ1 — BPI-17 COMPLETE (Double-Null Protocol)")
     print(f"{'='*100}")
     print(f"  Total wall time: {total_wall:.1f}s ({total_wall/3600:.2f} hours)")
     print(f"  Output directory: {RQ1_OUTPUT_DIR}")
-    print(f"    rq1_fdr_metrics.csv   — FDR table (one row per method)")
-    print(f"    rq1_null_counts.csv   — raw FP counts ({B_NULL} rows x 4 methods)")
-    print(f"    rq1_results.json      — full results for paper generation")
+    print(f"    rq1_fdr_metrics.csv          — FDR table (one row per method)")
+    print(f"    rq1_null_counts.csv          — raw FP counts ({B_NULL} rows x 4 methods)")
+    print(f"    rq1_m_prime_distribution.csv — m' per null replicate (scope-filter diagnostic)")
+    print(f"    rq1_results.json             — full results for paper generation")
     print(f"    rq1_pattern_arrays.npz")
     print(f"\n  KEY RESULT:")
     for method in ALL_METHODS:
@@ -1234,8 +1340,10 @@ def main():
           f"k*_Tusher={tusher_report.k_star_tusher}")
     print(f"  pi0_disc={pi0_est.pi0_disc:.4f} -> Storey power gain ~ "
           f"{1.0/max(pi0_est.pi0_disc, 0.01):.2f}x over BH")
+    mp = m_prime_dist
     print(f"\n  Null protocol: DOUBLE-NULL (sigma_label ∘ sigma_trace)")
-    print(f"  Both p_struct and p_disc are U(0,1) under null -> T_Fisher ~ chi2(4)")
+    print(f"  Oracle: chi2.sf(T_Hou/c, f), c={W_STRUCT**2+W_DISC**2:.2f}, f={2/(W_STRUCT**2+W_DISC**2):.2f}  (rho_sd=0 under double-null)")
+    print(f"  m' distribution: mean={mp.mean():.1f}, zeros={int(np.sum(mp==0))}/{B_NULL}")
     print(f"{'='*100}")
 
 
@@ -1245,7 +1353,7 @@ def main():
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
-        description="RQ1 FDR Control Validity — BPI Challenge 2017 (Double-Null Protocol)"
+        description="RQ1 FDR Control Validity — BPI-17 (Double-Null Protocol)"
     )
     parser.add_argument(
         '--b-null', type=int, default=B_NULL,
@@ -1261,11 +1369,13 @@ if __name__ == "__main__":
     )
     args = parser.parse_args()
 
+    B_NULL = 2 if args.dry_run else args.b_null
+    assert B_NULL < 100_000, (
+        f"B_NULL={B_NULL} would cause seed layer overlap "
+        "(three layers at BASE+b, BASE+100k+b, BASE+300k+b must be disjoint)"
+    )
     if args.dry_run:
-        B_NULL = 2
         print("*** DRY RUN MODE: B_null=2 ***")
-    else:
-        B_NULL = args.b_null
 
     N_JOBS = args.n_jobs
 

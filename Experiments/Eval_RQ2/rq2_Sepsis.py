@@ -1,52 +1,65 @@
 """
-RQ2 â€” DO PATTERNS CARRY DISCRIMINATIVE SIGNAL?
+RQ2 — DO PATTERNS CARRY DISCRIMINATIVE SIGNAL?
 ===============================================
-Full Evaluation Pipeline: Steps 1â€“6  (Sepsis)
+Full Evaluation Pipeline: Steps 1–6  (Sepsis)
 
-STEP 1: Retrieve holds_all from Phase 1 output â€” reuse if in-memory or
+STEP 1: Retrieve holds_all from Phase 1 output — reuse if in-memory or
         cached to disk; recompute only as last resort.
         CRITICAL: outcome signal ('Return ER') is stripped from traces
         before any pattern evaluation, matching Phase 1 preprocessing.
-STEP 2: Build binary feature matrices X âˆˆ {0,1}^{nÃ—k} for 8 pattern sets.
+STEP 2: Build binary feature matrices X ∈ {0,1}^{n×k} for 9 pattern sets.
 STEP 3: 5-times repeated stratified 5-fold nested CV (25 outer folds).
          Inner loop: 5-fold grid search over LR-L1 and RF.
 STEP 4: Wilcoxon signed-rank test on 25 paired AUROC differences,
-         Holm-Bonferroni correction across 7 competitors.
+         Holm-Bonferroni correction across 8 competitors.
 STEP 5: Random-k baseline (30 random samples of k patterns, same CV).
 STEP 6: Direction-aware post-hoc analysis:
          6a. Direction-stratified ablation (Ours_Positive, Ours_Negative)
-         6b. Learned-direction consistency (LR Î²-sign vs Phase 1 direction)
+         6b. Learned-direction consistency (LR β-sign vs Phase 1 direction)
          6c. Direction-weighted RF feature importance (MDI by direction)
 
-PATTERN SETS (from Phase 1 four-category verdict taxonomy):
-    Ours             â€” significance_category == "Both" (dual Storey FDR, IUT)
-    Ours_Positive    â€” significance_category == "Both" AND direction == "Positive"
-    Ours_Negative    â€” significance_category == "Both" AND direction == "Negative"
-    Discriminative   â€” significance_category == "Discriminative only"
-    Structural       â€” significance_category == "Structural only"
-    BH-FDR           â€” is_significant_bh == True
-    Union            â€” is_significant_discriminative OR is_significant_structural
-    All              â€” holds_all.keys()
+PATTERN SETS (from Phase 1 v9.0 single-gate Hou-Storey architecture):
+    PRIMARY SET:
+    Ours             — is_significant_final == True
+                       = "Both" ∪ "Discriminative only" (Hou-Storey q_Hou ≤ α)
+                       Hou (2005) weighted T_Hou = -2[w_s ln p_s + w_d ln p_d],
+                       w_d = B_label / (B_label + B2_test) = 1500/2500 = 0.60,
+                       w_s = B2_test / (B_label + B2_test) = 1000/2500 = 0.40.
+                       Gao (2023) adaptive Storey π̂₀, doubly-null calibrated.
+
+    P1 TAXONOMY SUB-CATEGORIES (ablation competitors):
+    Ours_Both        — significance_category == "Both"
+                       (q_Hou ≤ α AND p_struct_dom ≤ α nominal)
+    Ours_Disc_Only   — significance_category == "Discriminative only"
+                       (q_Hou ≤ α AND p_struct_dom > α)
+    Ours_Positive    — is_significant_final AND direction == "Positive"
+    Ours_Negative    — is_significant_final AND direction == "Negative"
+
+    EXTERNAL BASELINES:
+    Structural       — significance_category == "Structural only"
+    BH               — is_significant_bh == True (BH on analytic Hou p-value)
+    Union            — is_significant_discriminative OR is_significant_structural
+    All              — holds_all.keys()
 
 STATISTICAL TESTING:
-    Per log, for each of 7 competitors vs "Ours":
+    Per log, for each of 8 competitors vs "Ours":
         Wilcoxon signed-rank test on 25 paired AUROC differences
-        Holm-Bonferroni correction across 7 tests
+        Holm-Bonferroni correction across 8 tests
         Rank-biserial r as effect size
 
 RANDOM-k BASELINE:
     For r = 1..30: sample k patterns uniformly from holds_all.keys()
-    Run same 5Ã—5Ã—5 CV; report mean Â± std of 30Ã—25 AUROC scores.
+    Run same 5×5×5 CV; report mean ± std of 30×25 AUROC scores.
 
 DIRECTION-AWARE ANALYSIS (Step 6):
-    6a. Ablation: Ours vs Ours_Positive vs Ours_Negative â€” tests whether
+    6a. Ablation: Ours vs Ours_Positive vs Ours_Negative — tests whether
         both directional sub-populations contribute complementary signal.
-    6b. Consistency: For LR-L1 outer folds, verify sign(Î²_j) aligns with
+    6b. Consistency: For LR-L1 outer folds, verify sign(β_j) aligns with
         Phase 1 direction label for each feature j.
     6c. Importance: For RF outer folds, compute MDI per feature, stratified
         by Positive/Negative direction.
 
-Version: 3.0-SEPSIS-DIRECTION-AWARE
+Version: 4.0-SEPSIS-P1-ALIGNED
 Author: Ahmed Nour Abdesselam
 Institution: Free University of Bozen-Bolzano
 Date: March 2026
@@ -56,7 +69,7 @@ References:
 - Cawley & Talbot (2010). On Over-fitting in Model Selection. JMLR 11:2079-2107.
 - Varma & Simon (2006). Bias in error estimation. BMC Bioinformatics 7:91.
 - Kohavi (1995). A study of cross-validation. IJCAI 14:1137-1143.
-- DemÅ¡ar (2006). Statistical Comparisons of Classifiers. JMLR 7:1-30.
+- Demšar (2006). Statistical Comparisons of Classifiers. JMLR 7:1-30.
 - Chicco & Jurman (2020). MCC advantages. BMC Genomics 21:6.
 - Fawcett (2006). An introduction to ROC analysis. Pattern Recognit. Lett.
 - Di Ciccio & Montali (2022). DECLARE constraint semantics.
@@ -65,8 +78,10 @@ References:
 - Tibshirani (1996). LASSO. JRSS-B 58(1):267-288.
 - Breiman (2001). Random Forests. Machine Learning 45(1):5-32.
 - Storey (2002). A direct approach to FDR. JRSS-B 64(3):479-498.
-- Berger (1982). Multiparameter Hypothesis Testing. Technometrics.
-- Mannhardt (2016). Sepsis Cases â€” Event Log. 4TU.ResearchData.
+- Hou (2005). A simple approximation for the distribution of the weighted combination of non-independent or independent chi-squares. Stat. Prob. Lett. 73:179-187.
+- Gao (2023). Adaptive Storey π̂₀ estimator. arXiv:2310.06357.
+- Berger (1982). Multiparameter Hypothesis Testing. Technometrics. [IUT — superseded in P1 v9.0 by Hou 2005 combination]
+- Mannhardt (2016). Sepsis Cases — Event Log. 4TU.ResearchData.
 """
 
 import os
@@ -102,6 +117,7 @@ from matplotlib.gridspec import GridSpec
 import seaborn as sns
 
 from tqdm import tqdm
+from joblib import Parallel, delayed
 
 warnings.filterwarnings('ignore')
 
@@ -143,9 +159,10 @@ COLORS = {
 
 SET_COLORS = {
     'Ours':            COLORS['ours'],
+    'Ours_Both':       COLORS['discriminative'],   # "Both" sub-category — forest green
+    'Ours_Disc_Only':  COLORS['accent'],           # "Discriminative only" sub-category
     'Ours_Positive':   COLORS['ours_pos'],
     'Ours_Negative':   COLORS['ours_neg'],
-    'Discriminative':  COLORS['discriminative'],
     'Structural':      COLORS['structural'],
     'BH':              COLORS['bh'],
     'Union':           COLORS['union'],
@@ -157,10 +174,10 @@ SET_COLORS = {
 # CONFIGURATION
 # ============================================================================
 
-BASE_SEED = 42  # Master seed â€” all random states derived from this
+BASE_SEED = 42  # Master seed — all random states derived from this
 
-# â”€â”€ Log configuration â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-# outcome_mode='activity_present': class 1 iff outcome_signal âˆˆ trace activities.
+# ── Log configuration ────────────────────────────────────────────────────────
+# outcome_mode='activity_present': class 1 iff outcome_signal ∈ trace activities.
 # outcome_strip_from_trace: if True, strip outcome_signal from trace BEFORE
 #   pattern evaluation. CRITICAL for Sepsis: Phase 1 strips 'Return ER' from
 #   traces to prevent trivially dominant patterns; RQ2 must match.
@@ -168,8 +185,8 @@ LOG_CONFIGS = {
     'Sepsis': {
         'csv': 'Sepsis_EL.csv',
         'declare_spec': 'phase0_Sepsis.json',
-        'phase1_dir': 'Sepsis_ThreeHyp_SAM',
-        'phase1_json': 'Sepsis_ThreeHyp_SAM/three_hypothesis_samfdr_results.json',
+        'phase1_dir': 'Sepsis_Results',
+        'phase1_json': 'Sepsis_Results/three_hypothesis_houfdr_results.json',
         'outcome_signal': 'Return ER',
         'outcome_mode': 'activity_present',
         'outcome_strip_from_trace': True,   # CRITICAL: match Phase 1 preprocessing
@@ -180,14 +197,14 @@ LOG_CONFIGS = {
 }
 
 # RQ2 output directory
-RQ2_OUTPUT_DIR = 'RQ2_Sepsis'
+RQ2_OUTPUT_DIR = 'RQ2_Sepsis_Parallel'
 
 # LOG_CONFIGS = {
 #     'Sepsis': {
 #         'csv': '../Phase 1 - KM Catalog Construction/Experiments data/CSV/Sepsis_EL.csv',
 #         'declare_spec': '../Phase 1 - KM Catalog Construction/Experiments data/Experiments/Results/DECspec_Sepsis/phase0_declare_specification_CC.json',
 #         'phase1_dir': '../Phase 1 - KM Catalog Construction/Experiments data/Experiments/Results/Sepsis_ThreeHyp_SAM2',
-#         'phase1_json': '../Phase 1 - KM Catalog Construction/Experiments data/Experiments/Results/Sepsis_ThreeHyp_SAM2/three_hypothesis_samfdr_results.json',
+#         'phase1_json': '../Phase 1 - KM Catalog Construction/Experiments data/Experiments/Results/Sepsis_ThreeHyp_SAM2/three_hypothesis_houfdr_results.json',
 #         'outcome_signal': 'Return ER',
 #         'outcome_mode': 'activity_present',
 #         'outcome_strip_from_trace': True,   # CRITICAL: match Phase 1 preprocessing
@@ -200,35 +217,41 @@ RQ2_OUTPUT_DIR = 'RQ2_Sepsis'
 # # RQ2 output directory
 # RQ2_OUTPUT_DIR = '../Experiments data/Experiments/Results/RQ2_Sepsis'
 
-# â”€â”€ CV configuration (fixed across all logs and pattern sets) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+# ── CV configuration (fixed across all logs and pattern sets) ─────────────
 N_OUTER_SPLITS  = 5
-N_OUTER_REPEATS = 5   # â†’ 25 outer test folds per pattern set per log
+N_OUTER_REPEATS = 5   # → 25 outer test folds per pattern set per log
 N_INNER_SPLITS  = 5
 
-# â”€â”€ Hyperparameter grids â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+# ── Hyperparameter grids ─────────────────────────────────────────────────
 LR_C_GRID      = [0.01, 0.1, 1, 10, 100]
 RF_DEPTH_GRID  = [3, 5, 10, None]
 RF_N_ESTIMATORS = 500
 
-# â”€â”€ Random-k baseline â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+# ── Random-k baseline ────────────────────────────────────────────────────
 N_RANDOM_SAMPLES = 30   # Number of random pattern samples
+N_JOBS = -1             # Outer parallelism for Step 5 (-1 = all cores, set via --n-jobs)
 
-# â”€â”€ Feature encoding â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-MIN_FEATURES = 3        # k < 3 â†’ skip
+# ── Feature encoding ─────────────────────────────────────────────────────
+MIN_FEATURES = 3        # k < 3 → skip
 
-# â”€â”€ Ternary sensitivity analysis â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+# ── Ternary sensitivity analysis ─────────────────────────────────────────
 RUN_TERNARY_SENSITIVITY = True
 
-# â”€â”€ Required Phase 1 JSON keys (for schema validation) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+# ── Required Phase 1 JSON keys (for schema validation) ──────────────────
 REQUIRED_PHASE1_KEYS = {
-    'significance_category',
-    'is_significant_bh',
-    'is_significant_structural',
-    'is_significant_discriminative',
     'constraint_type',
     'activity_a',
-    'direction',          # DIRECTION-AWARE: required for directional analysis
+    'direction',
+    'storey_fdr',   # sub-object
+    'bh_fdr',       # sub-object
 }
+REQUIRED_STOREY_KEYS = {
+    'significance_category',
+    'is_significant_structural',
+    'is_significant_discriminative',
+    'is_significant_final',
+}
+REQUIRED_BH_KEYS = {'is_significant'}
 
 
 # ============================================================================
@@ -244,6 +267,10 @@ BINARY_NEGATIVE_CONSTRAINTS = ['NotResponse', 'NotChainSuccession']
 ALL_CONSTRAINT_TYPES = (
     UNARY_CONSTRAINTS + BINARY_POSITIVE_CONSTRAINTS + BINARY_NEGATIVE_CONSTRAINTS
 )
+# NOTE: Precedence family and NotChainResponse/NotSuccession are supported in
+# evaluate_pattern_fast dispatch (identical to p1_Sepsis_hou.py) but are NOT
+# listed in ALL_CONSTRAINT_TYPES — p1_Sepsis_hou.py generates candidates from
+# the 10 types above only. The dispatch handles them if they appear in Phase 0 spec.
 
 
 def precompute_activity_index(trace, case_id=None):
@@ -335,6 +362,62 @@ def check_NotChainSuccession_trace(idx, trace, x, y, **kw):
         if yp_val > 0 and trace[yp_val - 1] == x: return 0
     return 1
 
+# ── Precedence-family and Not-Precedence checkers (identical to p1_Sepsis_hou.py)
+#    These are in the evaluate_pattern_fast dispatch but not in ALL_CONSTRAINT_TYPES.
+#    Defined here for full dispatch coverage across all DECLARE log types. ──
+
+def check_Precedence_trace(idx, trace, x, y, **kw):
+    if y not in idx: return None
+    xp = set(idx.get(x, []))
+    for yp in idx[y]:
+        if not any(j < yp for j in xp): return 0
+    return 1
+
+def check_AlternatePrecedence_trace(idx, trace, x, y, **kw):
+    if y not in idx: return None
+    xpos = sorted(idx.get(x, []))
+    ypos = sorted(idx[y])
+    for i, yp in enumerate(ypos):
+        if i == 0: continue
+        lower = ypos[i - 1] + 1
+        if not any(lower <= j < yp for j in xpos): return 0
+    return 1
+
+def check_ChainPrecedence_trace(idx, trace, x, y, **kw):
+    if y not in idx: return None
+    for yp in idx[y]:
+        if not (yp > 0 and trace[yp - 1] == x): return 0
+    return 1
+
+def check_NotChainResponse_trace(idx, trace, x, y, **kw):
+    if x not in idx or y not in idx: return None
+    for xp in idx[x]:
+        if xp + 1 < len(trace) and trace[xp + 1] == y: return 0
+    return 1
+
+def check_NotSuccession_trace(idx, trace, x, y, **kw):
+    if x not in idx or y not in idx: return None
+    yp = set(idx.get(y, []))
+    for xp in idx[x]:
+        if any(j > xp for j in yp): return 0
+    xp_set = set(idx.get(x, []))
+    for yp_val in idx[y]:
+        if any(j < yp_val for j in xp_set): return 0
+    return 1
+
+def check_NotPrecedence_trace(idx, trace, x, y, **kw):
+    if y not in idx: return None
+    xp = set(idx.get(x, []))
+    for yp in idx[y]:
+        if any(j < yp for j in xp): return 0
+    return 1
+
+def check_NotChainPrecedence_trace(idx, trace, x, y, **kw):
+    if x not in idx or y not in idx: return None
+    for yp in idx[y]:
+        if yp > 0 and trace[yp - 1] == x: return 0
+    return 1
+
 
 def evaluate_pattern_fast(constraint_type, activity_a, activity_b, trace, activity_index, **kw):
     dispatch = {
@@ -343,10 +426,15 @@ def evaluate_pattern_fast(constraint_type, activity_a, activity_b, trace, activi
         'Response': lambda: check_Response_trace(activity_index, trace, activity_a, activity_b),
         'AlternateResponse': lambda: check_AlternateResponse_trace(activity_index, trace, activity_a, activity_b),
         'ChainResponse': lambda: check_ChainResponse_trace(activity_index, trace, activity_a, activity_b),
+        'Precedence': lambda: check_Precedence_trace(activity_index, trace, activity_a, activity_b),
+        'AlternatePrecedence': lambda: check_AlternatePrecedence_trace(activity_index, trace, activity_a, activity_b),
+        'ChainPrecedence': lambda: check_ChainPrecedence_trace(activity_index, trace, activity_a, activity_b),
         'Succession': lambda: check_Succession_trace(activity_index, trace, activity_a, activity_b),
         'AlternateSuccession': lambda: check_AlternateSuccession_trace(activity_index, trace, activity_a, activity_b),
         'ChainSuccession': lambda: check_ChainSuccession_trace(activity_index, trace, activity_a, activity_b),
         'NotResponse': lambda: check_NotResponse_trace(activity_index, trace, activity_a, activity_b),
+        'NotChainResponse': lambda: check_NotChainResponse_trace(activity_index, trace, activity_a, activity_b),
+        'NotSuccession': lambda: check_NotSuccession_trace(activity_index, trace, activity_a, activity_b),
         'NotChainSuccession': lambda: check_NotChainSuccession_trace(activity_index, trace, activity_a, activity_b),
     }
     fn = dispatch.get(constraint_type)
@@ -364,7 +452,16 @@ def evaluate_pattern_fast(constraint_type, activity_a, activity_b, trace, activi
 
 @dataclass
 class CaseInfo:
-    """Minimal case structure for RQ2."""
+    """
+    Minimal case structure for RQ2.
+
+    IMPORTANT — `trace` excludes the outcome signal activity. Retaining it
+    would produce trivially dominant DECLARE constraints (e.g. Init/End/Response
+    involving 'Return ER' at 100% in Class 1 and 0% in Class 0) that encode
+    the label rather than genuine process behaviour. This matches P1's
+    load_and_preprocess_data() which strips the outcome signal before any
+    pattern evaluation (see outcome_strip_from_trace in LOG_CONFIGS).
+    """
     case_id: str
     outcome: int
     trace: List[str]
@@ -475,48 +572,163 @@ def load_event_log(
 
 
 def load_phase1_results(json_path: str) -> dict:
-    """Load Phase 1 three-hypothesis results JSON."""
+    """
+    Load Phase 1 JSON and construct two working pattern pools.
+
+    P1 v9.0 JSON sub-lists and their formats:
+        significant_patterns       — nested pddict (storey_fdr / bh_fdr sub-objects)
+                                     contains "Both" ∪ "Discriminative only" (is_significant_final)
+        structural_only_patterns   — flat compact dict (fields at top level)
+        discriminative_only_patterns — flat compact dict
+        all_patterns               — flat compact dict; includes "Neither"; is_significant_bh
+                                     at top level (not nested under bh_fdr)
+
+    NOTE: significant_patterns already contains "Discriminative only" (sigresults =
+    [r for r in patternresults if r.is_significant_final]). discriminative_only_patterns
+    stores the same records again. all_nested is deduplicated by spec (ct, a, b) to
+    prevent duplicate columns in Ours / Ours_Disc_Only feature matrices.
+
+    Internal pools:
+        _working_patterns      — deduplicated non-Neither patterns (Ours, Structural sets)
+        _working_patterns_full — all_patterns if available (BH, Union sets — includes "Neither")
+    """
     print(f"   Loading Phase 1 results: {json_path}")
     with open(json_path, 'r', encoding='utf-8') as f:
         data = json.load(f)
 
-    n_all = len(data.get('all_patterns', []))
-    n_sig = len(data.get('significant_patterns', []))
-    n_str = len(data.get('structural_only_patterns', []))
-    n_dis = len(data.get('discriminative_only_patterns', []))
-    print(f"   Phase 1 patterns: {n_all:,} total, "
-          f"{n_sig} Both, {n_str} Structural only, {n_dis} Discriminative only")
+    # ── Load all sub-lists from Phase 1 JSON ──────────────────────────
+    sig_pats  = data.get('significant_patterns', [])       # "Both"
+    str_pats  = data.get('structural_only_patterns', [])   # "Structural only"
+    dis_pats  = data.get('discriminative_only_patterns', [])# "Discriminative only"
+    all_pats  = data.get('all_patterns', [])               # ALL tested (includes "Neither")
 
-    # JSON schema validation
-    all_pats = data.get('all_patterns', [])
+    n_sig  = len(sig_pats)
+    n_str  = len(str_pats)
+    n_dis  = len(dis_pats)
+    n_full = len(all_pats)
+
+    print(f"   Phase 1 patterns loaded from sub-lists:")
+    print(f"     Both (significant_patterns):        {n_sig}  [nested pddict format]")
+    print(f"     Structural only:                    {n_str}  [flat compact format]")
+    print(f"     Discriminative only:                {n_dis}  [flat compact format]")
+
+    # Deduplicate by (constraint_type, activity_a, activity_b).
+    # significant_patterns = "Both" ∪ "Discriminative only"; discriminative_only_patterns
+    # stores the same "Discriminative only" records again → dedup prevents duplicate columns.
+    seen_specs = set()
+    all_nested = []
+    for p in sig_pats + str_pats + dis_pats:
+        spec = (p['constraint_type'], p['activity_a'], p.get('activity_b'))
+        if spec not in seen_specs:
+            seen_specs.add(spec)
+            all_nested.append(p)
+    n_raw = n_sig + n_str + n_dis
+    n_removed = n_raw - len(all_nested)
+    n_all = len(all_nested)
+    if n_removed > 0:
+        print(f"     Deduplicated: removed {n_removed} duplicate specs "
+              f"(Disc_only appears in both sig_pats and dis_pats)")
+    print(f"     Total non-Neither (deduplicated):   {n_all}")
     if all_pats:
-        actual_keys = set(all_pats[0].keys())
-        missing_keys = REQUIRED_PHASE1_KEYS - actual_keys
-        assert not missing_keys, (
-            f"Phase 1 JSON schema mismatch: required keys {missing_keys} "
-            f"not found. Actual keys: {sorted(actual_keys)}. "
-            f"Ensure Phase 1 was run with the matching version."
-        )
-        print(f"   âœ“ JSON schema validated ({len(REQUIRED_PHASE1_KEYS)} required keys present, "
-              f"including 'direction')")
-
-        # Report direction distribution
-        dir_counts = Counter(p.get('direction', 'Unknown') for p in all_pats)
-        print(f"   Direction distribution (all patterns): {dict(dir_counts)}")
-
-        # Report direction distribution within 'Both' category
-        both_pats = [p for p in all_pats if p.get('significance_category') == 'Both']
-        if both_pats:
-            dir_both = Counter(p.get('direction', 'Unknown') for p in both_pats)
-            print(f"   Direction distribution (Both only):    {dict(dir_both)}")
+        print(f"     all_patterns (full list):           {n_full}  ← used for BH/Union sets")
     else:
-        print(f"   âš ï¸  all_patterns is empty in Phase 1 JSON.")
+        print(f"     all_patterns:                       NOT PRESENT in JSON")
 
+    # ── BH/Union coverage: use all_patterns if available ──────────────
+    # "Neither" patterns (q_Hou > α, p_struct_dom > α) are excluded from sub-lists.
+    # A "Neither" pattern could still be BH-significant on the analytic Hou p-value.
+    # Loading all_patterns ensures BH and Union sets are not undercounted.
+    metadata = data.get('metadata', data.get('summary', {}))
+    n_tested = metadata.get('total_patterns_tested', None)
+    bh_ref   = metadata.get('bh_rejections_reference', None)
+    if n_tested is not None:
+        n_neither = n_tested - n_all
+        if n_neither > 0 and not all_pats:
+            print(f"   ⚠️  WARNING: {n_neither} 'Neither' patterns are absent "
+                  f"(not stored in any sub-list and all_patterns key not found). "
+                  f"BH and Union sets will be built from {n_all}/{n_tested} tested "
+                  f"patterns — counts may be lower than Phase 1 reference ({bh_ref}).")
+        elif n_neither > 0 and all_pats:
+            print(f"   ✓ BH/Union coverage: using all_patterns ({n_full}) "
+                  f"which includes {n_neither} 'Neither' patterns.")
+        else:
+            print(f"   ✓ Coverage: sub-lists cover all {n_tested} tested patterns.")
+
+    if not all_nested:
+        print(f"   ⚠️  All sub-lists are empty in Phase 1 JSON.")
+        data['_working_patterns']      = []
+        data['_working_patterns_full'] = all_pats if all_pats else []
+        return data
+
+    # ── Schema validation ─────────────────────────────────────────────
+    # Nested pddict: validate via first sig_pats entry (always pddict)
+    first = sig_pats[0] if sig_pats else all_nested[0]
+    actual_top = set(first.keys())
+    missing_top = REQUIRED_PHASE1_KEYS - actual_top
+    assert not missing_top, (
+        f"Phase 1 JSON schema mismatch — missing top-level keys: {missing_top}. "
+        f"Actual keys: {sorted(actual_top)}."
+    )
+    storey_sample = first.get('storey_fdr', {})
+    missing_storey = REQUIRED_STOREY_KEYS - set(storey_sample.keys())
+    assert not missing_storey, (
+        f"storey_fdr sub-object missing keys: {missing_storey}."
+    )
+    bh_sample = first.get('bh_fdr', {})
+    missing_bh = REQUIRED_BH_KEYS - set(bh_sample.keys())
+    assert not missing_bh, (
+        f"bh_fdr sub-object missing keys: {missing_bh}."
+    )
+    print(f"   ✓ Nested pddict schema validated on significant_patterns[0].")
+
+    # Flat compact: validate first str_pats entry (structural_only uses compact format)
+    if str_pats:
+        first_compact = str_pats[0]
+        assert 'significance_category' in first_compact, (
+            f"compact_pattern_dict missing 'significance_category' at top level. "
+            f"Keys: {sorted(first_compact.keys())}"
+        )
+        print(f"   ✓ Flat compact schema validated on structural_only_patterns[0].")
+
+    # ── BH count cross-check (best-effort) ────────────────────────────
+    # all_nested uses nested pddict for sig_pats entries — bh nested under bh_fdr.
+    # all_pats uses flat format — is_significant_bh at top level (no bh_fdr sub-object).
+    bh_count_nonnether = sum(
+        1 for p in all_nested
+        if p.get('bh_fdr', {}).get('is_significant', False)
+    )
+    bh_count_full = sum(
+        1 for p in all_pats
+        if p.get('is_significant_bh', False)   # flat format: top-level key
+    ) if all_pats else bh_count_nonnether
+    if bh_ref is not None:
+        if bh_count_full < bh_ref:
+            print(f"   ⚠️  BH count (all_patterns): {bh_count_full} "
+                  f"(Phase 1 reference: {bh_ref}). "
+                  f"Deficit of {bh_ref - bh_count_full} — possible schema mismatch.")
+        elif bh_count_nonnether < bh_ref:
+            print(f"   ✓ BH count from all_patterns: {bh_count_full} == metadata.bh_rejections_reference"
+                  f"  (non-Neither sub-lists alone: {bh_count_nonnether})")
+        else:
+            print(f"   ✓ BH count: {bh_count_full} == metadata.bh_rejections_reference")
+
+    # ── Direction distributions ───────────────────────────────────────
+    dir_all  = Counter(p.get('direction', 'Unknown') for p in all_nested)
+    dir_both = Counter(p.get('direction', 'Unknown') for p in sig_pats)
+    print(f"   Direction distribution (all sub-lists, n={n_all}): {dict(dir_all)}")
+    print(f"   Direction distribution (Both only,    n={n_sig}):  {dict(dir_both)}")
+
+    # ── Inject working pools under consistent internal keys ───────────
+    # _working_patterns:      deduplicated non-Neither (Ours, Structural sets)
+    # _working_patterns_full: all_patterns (flat, deduplicated by P1) if available,
+    #                         else fall back to all_nested (BH/Union may be undercounted)
+    data['_working_patterns']      = all_nested
+    data['_working_patterns_full'] = all_pats if all_pats else all_nested
     return data
 
 
 # ============================================================================
-# STEP 1 â€” RETRIEVE / RECONSTRUCT HOLDS_ALL
+# STEP 1 — RETRIEVE / RECONSTRUCT HOLDS_ALL
 # ============================================================================
 
 def compute_holds_all(
@@ -524,7 +736,7 @@ def compute_holds_all(
     candidates_all: List[Tuple],
 ) -> Dict[Tuple, Dict[str, int]]:
     """
-    Compute holds_all from scratch â€” O(n Ã— m Ã— L_avg).
+    Compute holds_all from scratch — O(n × m × L_avg).
     Used only when no cached or in-memory holds_all is available.
     """
     print(f"\n   Computing holds_all for {len(candidates_all):,} patterns "
@@ -577,7 +789,7 @@ def retrieve_phase1_artifacts(
         3. Recompute (traces already stripped if outcome_strip_from_trace)
     """
     print(f"\n{'='*80}")
-    print(f"STEP 1: RETRIEVE PHASE 1 ARTIFACTS â€” {log_name}")
+    print(f"STEP 1: RETRIEVE PHASE 1 ARTIFACTS — {log_name}")
     print(f"{'='*80}")
 
     case_data = load_event_log(log_config['csv'], log_config, log_name)
@@ -587,14 +799,14 @@ def retrieve_phase1_artifacts(
     y = np.array([case_data[cid].outcome for cid in case_ids_ordered], dtype=np.int8)
     n1, n0 = int(y.sum()), int((1 - y).sum())
 
-    print(f"\n   [Phase 1 â†’ RQ2] n={len(case_ids_ordered)}, "
+    print(f"\n   [Phase 1 → RQ2] n={len(case_ids_ordered)}, "
           f"class-1={n1} ({n1/len(y)*100:.1f}%), class-0={n0} ({n0/len(y)*100:.1f}%)")
 
     cache_path = os.path.join(log_config['phase1_dir'], 'holds_all_cache.pkl')
 
     if holds_all_precomputed is not None:
         holds_all = holds_all_precomputed
-        print(f"   [Step 1] holds_all REUSED from Phase 1 memory â€” "
+        print(f"   [Step 1] holds_all REUSED from Phase 1 memory — "
               f"zero recomputation. |holds_all| = {len(holds_all):,}")
     elif os.path.exists(cache_path):
         print(f"   [Step 1] Loading cached holds_all from {cache_path}...")
@@ -603,8 +815,8 @@ def retrieve_phase1_artifacts(
         print(f"   [Step 1] holds_all loaded from disk cache. "
               f"|holds_all| = {len(holds_all):,}")
     else:
-        print(f"   âš ï¸  [Step 1] No in-memory or cached holds_all available.")
-        print(f"   âš ï¸  Recomputing from scratch â€” traces already stripped "
+        print(f"   ⚠️  [Step 1] No in-memory or cached holds_all available.")
+        print(f"   ⚠️  Recomputing from scratch — traces already stripped "
               f"(outcome_strip_from_trace={log_config.get('outcome_strip_from_trace', False)}).")
         candidates_phase0 = _load_candidates_from_phase0(log_config['declare_spec'])
         print(f"   Phase 0 candidates: {len(candidates_phase0):,}")
@@ -613,7 +825,7 @@ def retrieve_phase1_artifacts(
         os.makedirs(os.path.dirname(cache_path), exist_ok=True)
         with open(cache_path, 'wb') as f:
             pickle.dump(holds_all, f, protocol=4)
-        print(f"   âœ“ Cache saved ({os.path.getsize(cache_path) / 1e6:.1f} MB)")
+        print(f"   ✓ Cache saved ({os.path.getsize(cache_path) / 1e6:.1f} MB)")
 
     candidates_all = list(holds_all.keys())
     print(f"   candidates_all: {len(candidates_all):,} (from holds_all.keys())")
@@ -622,52 +834,121 @@ def retrieve_phase1_artifacts(
 
 
 # ============================================================================
-# STEP 2 â€” BUILD BINARY FEATURE MATRICES FOR ALL 8 PATTERN SETS
+# STEP 2 — BUILD BINARY FEATURE MATRICES FOR ALL 8 PATTERN SETS
 # ============================================================================
 
 def _classify_pattern_from_json(pat: dict) -> dict:
     """
-    Extract classification fields from a Phase 1 all_patterns JSON entry.
-    Now includes direction and dominant_class for direction-aware analysis.
+    Extract classification fields from a P1 v9.0 JSON entry.
+
+    P1 v9.0 writes TWO structurally different formats depending on which JSON
+    sub-list a pattern appears in:
+
+    Nested pddict (significant_patterns only):
+        storey_fdr: { significance_category, is_significant_structural,
+                      is_significant_discriminative, is_significant_final }
+        bh_fdr:     { is_significant }  ← 'is_significant', not 'is_significant_bh'
+
+    Flat compact dict (structural_only_patterns, discriminative_only_patterns,
+                       all_patterns):
+        significance_category, is_significant_structural, is_significant_discriminative,
+        is_significant_final, is_significant_bh  ← all at TOP LEVEL, no sub-objects.
+
+    is_significant_structural: RAW NOMINAL label (p_struct_dom ≤ α) — NOT a Storey
+        q-value gate; stored for taxonomy only (P1 Step 5c).
+    is_significant_final = is_significant_discriminative = (q_Hou ≤ α) — SOLE gate.
     """
+    if 'storey_fdr' in pat:
+        # Nested pddict format — significant_patterns only
+        storey = pat['storey_fdr']
+        is_bh  = pat.get('bh_fdr', {}).get('is_significant', False)
+    else:
+        # Flat compact format — all other sub-lists and all_patterns
+        storey = pat
+        is_bh  = pat.get('is_significant_bh', False)
+
+    # is_significant_final may be absent in compact_pattern_dict for older P1 output;
+    # fall back to is_significant_discriminative (P1 invariant: final ≡ discriminative).
+    is_final = storey.get(
+        'is_significant_final',
+        storey.get('is_significant_discriminative', False),
+    )
+
     return {
         'spec': (
             pat['constraint_type'],
             pat['activity_a'],
             pat.get('activity_b'),
         ),
-        'significance_category': pat.get('significance_category', 'Neither'),
-        'is_significant_bh': pat.get('is_significant_bh', False),
-        'is_significant_structural': pat.get('is_significant_structural', False),
-        'is_significant_discriminative': pat.get('is_significant_discriminative', False),
-        'is_significant_final': pat.get('is_significant_final', False),
-        'direction': pat.get('direction', 'Unknown'),
-        'dominant_class': pat.get('dominant_class', None),
+        # RAW NOMINAL (p_struct_dom ≤ α) — NOT a Storey q-value gate
+        'significance_category':         storey.get('significance_category', 'Neither'),
+        'is_significant_structural':     storey.get('is_significant_structural', False),
+        # Hou-Storey primary gate (q_Hou ≤ α, Step 5b)
+        'is_significant_discriminative': storey.get('is_significant_discriminative', False),
+        # Identical to is_significant_discriminative — SOLE significance gate in P1 v9.0
+        'is_significant_final':          is_final,
+        # BH on analytic Satterthwaite p_Hou — reference comparison only
+        'is_significant_bh':             is_bh,
+        'direction':                     pat.get('direction', 'Unknown'),
+        'dominant_class':                pat.get('dominant_class', None),
     }
 
 
-# Pattern set selection predicates â€” applied to the JSON classification dict
-# DIRECTION-AWARE: Ours_Positive and Ours_Negative added
+# ============================================================================
+# PATTERN SET DEFINITIONS — Aligned with P1 v9.0 single-gate architecture
+# ============================================================================
+#
+# P1 SINGLE GATE: is_significant_final = is_significant_discriminative = (q_Hou ≤ α)
+#   is_significant_final = True  iff  significance_category in {"Both", "Discriminative only"}
+#
+# P1 TAXONOMY (descriptive, not a gate):
+#   Both               = q_Hou ≤ α  AND  p_struct_dom ≤ α (raw nominal)
+#   Discriminative only= q_Hou ≤ α  AND  p_struct_dom > α
+#   Structural only    = q_Hou > α  AND  p_struct_dom ≤ α (raw nominal)
+#   Neither            = both criteria fail
+#
+# WEIGHT ALIGNMENT (P1 CONFIG v9.0):
+#   B_label = 1500, B2_test = B_trace // 2 = 1000
+#   w_d = 1500 / 2500 = 0.60  (discriminative weight, Hou 2005 precision-proportional)
+#   w_s = 1000 / 2500 = 0.40  (structural weight, Hou 2005 precision-proportional)
+#
+# DIRECTION DEFINITION (P1, PatternTestResult.direction):
+#   "Positive" = class 1 (Return ER / deviant) has higher prevalence (prev1 ≥ prev0)
+#   "Negative" = class 0 (No Return ER / normal) has higher prevalence (prev0 > prev1)
+# ============================================================================
+
 PATTERN_SET_DEFINITIONS = {
-    'Ours':            lambda p: p['significance_category'] == 'Both',
-    'Ours_Positive':   lambda p: p['significance_category'] == 'Both' and p['direction'] == 'Positive',
-    'Ours_Negative':   lambda p: p['significance_category'] == 'Both' and p['direction'] == 'Negative',
-    'Discriminative':  lambda p: p['significance_category'] == 'Discriminative only',
+    # PRIMARY: Full P1 output — is_significant_final = True
+    # = "Both" ∪ "Discriminative only"  (Hou-Storey gate q_Hou ≤ α, Step 5b)
+    'Ours':            lambda p: p['is_significant_final'],
+
+    # P1 taxonomy sub-categories of Ours (ablation competitors)
+    'Ours_Both':       lambda p: p['significance_category'] == 'Both',
+    'Ours_Disc_Only':  lambda p: p['significance_category'] == 'Discriminative only',
+
+    # Direction-stratified sub-populations (within Ours)
+    'Ours_Positive':   lambda p: p['is_significant_final'] and p['direction'] == 'Positive',
+    'Ours_Negative':   lambda p: p['is_significant_final'] and p['direction'] == 'Negative',
+
+    # External baselines
     'Structural':      lambda p: p['significance_category'] == 'Structural only',
     'BH':              lambda p: p['is_significant_bh'],
-    'Union':           lambda p: (p['is_significant_discriminative'] or p['is_significant_structural']),
+    'Union':           lambda p: p['is_significant_discriminative'] or p['is_significant_structural'],
     'All':             None,  # uses holds_all.keys() directly
 }
 
 SET_NAMES_ORDERED = [
-    'Ours', 'Ours_Positive', 'Ours_Negative',
-    'Discriminative', 'Structural', 'BH', 'Union', 'All',
+    'Ours',
+    'Ours_Both', 'Ours_Disc_Only',
+    'Ours_Positive', 'Ours_Negative',
+    'Structural', 'BH', 'Union', 'All',
 ]
 
 # The "primary" sets for Wilcoxon comparison (Ours vs each of these)
 COMPETITOR_SETS = [
+    'Ours_Both', 'Ours_Disc_Only',
     'Ours_Positive', 'Ours_Negative',
-    'Discriminative', 'Structural', 'BH', 'Union', 'All',
+    'Structural', 'BH', 'Union', 'All',
 ]
 
 
@@ -678,10 +959,15 @@ def build_feature_matrix(
     vacuous_fill: int = 0,
 ) -> np.ndarray:
     """
-    Build X âˆˆ {0,1}^{n Ã— k} for a given ordered list of pattern specs.
+    Build X ∈ {0,1}^{n × k} for a given ordered list of pattern specs.
 
     Encoding (Di Francescomarino et al. 2022):
         X[i, j] = holds_all[pat_j].get(case_i, vacuous_fill)
+
+    NOTE on ternary sensitivity (vacuous_fill=2): creates ordinal encoding
+    {0=violated, 1=satisfied, 2=vacuous}. Numerically 2 > 1, implying
+    "vacuous > satisfied" — no semantic grounding. This is a sensitivity
+    analysis only; binary CWA (vacuous_fill=0) is the canonical encoding.
     """
     n = len(case_ids_ordered)
     k = len(pattern_specs)
@@ -705,51 +991,65 @@ def build_all_feature_matrices(
     candidates_all: List[Tuple],
 ) -> Tuple[Dict[str, dict], List[dict]]:
     """
-    STEP 2: Construct feature matrices for all 8 pattern sets.
+    STEP 2: Construct feature matrices for all 9 pattern sets.
+
+    BH/Union sets draw from _working_patterns_full (all_patterns, includes "Neither")
+    to avoid undercounting BH-significant "Neither" patterns.
+    All other sets draw from _working_patterns (non-Neither only — correct by construction).
 
     Returns:
-        feature_matrices: Dict[set_name â†’ {X, k, patterns, sparsity, direction_labels}]
-        all_pats_classified: List[dict] â€” full classified pattern list for Step 6
+        feature_matrices: Dict[set_name → {X, k, patterns, sparsity, direction_labels}]
+        all_pats_classified: List[dict] — non-Neither classified patterns for Step 6
     """
     print(f"\n{'='*80}")
-    print("STEP 2: BUILD FEATURE MATRICES â€” 8 PATTERN SETS (direction-aware)")
+    print("STEP 2: BUILD FEATURE MATRICES — 9 PATTERN SETS (direction-aware)")
     print(f"{'='*80}")
 
-    all_pats = [_classify_pattern_from_json(p) for p in phase1_results.get('all_patterns', [])]
-    print(f"   Loaded {len(all_pats):,} pattern classifications from Phase 1 JSON")
+    # Non-Neither patterns: used for Ours/Ours_Both/Ours_Disc_Only/Structural sets
+    all_pats = [_classify_pattern_from_json(p) for p in phase1_results.get('_working_patterns', [])]
+    # Full pattern list (includes "Neither"): used for BH/Union sets to avoid undercounting
+    all_pats_full = [_classify_pattern_from_json(p) for p in phase1_results.get('_working_patterns_full', [])]
+    print(f"   Loaded {len(all_pats):,} non-Neither classifications from Phase 1 JSON")
+    print(f"   Loaded {len(all_pats_full):,} total classifications (for BH/Union sets)")
 
+    n_ours = sum(1 for p in all_pats if p['is_significant_final'])
     n_both = sum(1 for p in all_pats if p['significance_category'] == 'Both')
     categories_found = Counter(p['significance_category'] for p in all_pats)
     print(f"   Phase 1 verdict distribution: {dict(categories_found)}")
+    print(f"   Ours (is_significant_final): {n_ours}  = Both({n_both}) + Disc_Only({n_ours - n_both})")
 
-    if n_both == 0 and len(all_pats) > 0:
-        print(f"   âš ï¸  WARNING: Zero 'Both' patterns found in Phase 1 JSON.")
+    if n_ours == 0 and len(all_pats) > 0:
+        print(f"   ⚠️  WARNING: Zero 'Ours' patterns (is_significant_final=True) found.")
 
-    # Build spec â†’ direction lookup for direction-aware analysis (Step 6)
+    # Build spec → direction lookup for direction-aware analysis (Step 6)
     spec_to_direction = {}
-    for p in all_pats:
+    for p in all_pats_full:
         spec_to_direction[p['spec']] = p['direction']
 
-    json_specs = {p['spec'] for p in all_pats}
+    json_specs = {p['spec'] for p in all_pats_full}
     holds_specs = set(holds_all.keys())
     json_only = json_specs - holds_specs
     if json_only:
-        print(f"   âš ï¸  {len(json_only)} JSON pattern specs not found in holds_all "
+        print(f"   ⚠️  {len(json_only)} JSON pattern specs not found in holds_all "
               f"(will be excluded from feature matrices).")
 
     print(f"\n   {'Set':>15s} {'k':>6s} {'Shape':>14s} {'Sparsity':>10s} {'Pos/Neg':>10s}")
-    print(f"   {'â”€'*65}")
+    print(f"   {'─'*65}")
+
+    # Sets that need the full pattern pool (including "Neither") for correct BH/Union counts
+    FULL_POOL_SETS = {'BH', 'Union'}
 
     feature_matrices = {}
 
     for set_name in SET_NAMES_ORDERED:
         criterion = PATTERN_SET_DEFINITIONS[set_name]
+        pat_pool = all_pats_full if set_name in FULL_POOL_SETS else all_pats
 
         if criterion is None:
             selected = list(candidates_all)
         else:
             selected = [
-                p['spec'] for p in all_pats
+                p['spec'] for p in pat_pool
                 if criterion(p) and p['spec'] in holds_specs
             ]
 
@@ -777,7 +1077,7 @@ def build_all_feature_matrices(
 
 
 # ============================================================================
-# STEP 3 â€” NESTED 5Ã—5Ã—5 CROSS-VALIDATION (direction-aware model capture)
+# STEP 3 — NESTED 5×5×5 CROSS-VALIDATION (direction-aware model capture)
 # ============================================================================
 
 def compute_fold_metrics(
@@ -800,6 +1100,7 @@ def run_nested_cv_for_set(
     set_name: str,
     base_seed: int = BASE_SEED,
     capture_models: bool = False,
+    sklearn_n_jobs: int = -1,  # n_jobs for GridSearchCV and RF; set to 1 when called from within a joblib.Parallel worker
 ) -> dict:
     """
     5-times repeated stratified 5-fold nested CV for one pattern set.
@@ -811,7 +1112,7 @@ def run_nested_cv_for_set(
     n, k = X.shape
 
     if k < MIN_FEATURES:
-        print(f"   [{set_name:>15s}] SKIPPED â€” k={k} < {MIN_FEATURES}")
+        print(f"   [{set_name:>15s}] SKIPPED — k={k} < {MIN_FEATURES}")
         return {
             'skipped': True, 'k': k,
             'auroc_scores': np.array([]),
@@ -824,8 +1125,8 @@ def run_nested_cv_for_set(
             'std_auroc': float('nan'),
         }
 
-    print(f"   [{set_name:>15s}] k={k}, n={n} â€” "
-          f"running {N_OUTER_REPEATS}Ã—{N_OUTER_SPLITS}-fold nested CV"
+    print(f"   [{set_name:>15s}] k={k}, n={n} — "
+          f"running {N_OUTER_REPEATS}×{N_OUTER_SPLITS}-fold nested CV"
           f"{' (capturing models for Step 6)' if capture_models else ''}...")
 
     n_total_folds = N_OUTER_REPEATS * N_OUTER_SPLITS
@@ -852,7 +1153,7 @@ def run_nested_cv_for_set(
                 n_splits=N_INNER_SPLITS, shuffle=True, random_state=inner_seed
             )
 
-            # â”€â”€ Inner loop: LR-L1 â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+            # ── Inner loop: LR-L1 ────────────────────────────────────────
             lr_gs = GridSearchCV(
                 LogisticRegression(
                     penalty='l1', solver='saga', max_iter=5000,
@@ -860,24 +1161,24 @@ def run_nested_cv_for_set(
                 ),
                 param_grid={'C': LR_C_GRID},
                 cv=inner_cv, scoring='roc_auc',
-                n_jobs=-1, refit=True,
+                n_jobs=sklearn_n_jobs, refit=True,
             )
             lr_gs.fit(X_tr, y_tr)
 
-            # â”€â”€ Inner loop: RF â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+            # ── Inner loop: RF ────────────────────────────────────────────
             rf_gs = GridSearchCV(
                 RandomForestClassifier(
                     n_estimators=RF_N_ESTIMATORS,
                     class_weight='balanced',
-                    random_state=inner_seed, n_jobs=-1,
+                    random_state=inner_seed, n_jobs=sklearn_n_jobs,
                 ),
                 param_grid={'max_depth': RF_DEPTH_GRID},
                 cv=inner_cv, scoring='roc_auc',
-                n_jobs=-1, refit=True,
+                n_jobs=sklearn_n_jobs, refit=True,
             )
             rf_gs.fit(X_tr, y_tr)
 
-            # â”€â”€ Family selection â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+            # ── Family selection ──────────────────────────────────────────
             if lr_gs.best_score_ >= rf_gs.best_score_:
                 best_model = lr_gs.best_estimator_
                 best_info = {
@@ -893,7 +1194,7 @@ def run_nested_cv_for_set(
                     'inner_auroc': float(rf_gs.best_score_),
                 }
 
-            # â”€â”€ Outer evaluation â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+            # ── Outer evaluation ──────────────────────────────────────────
             y_score = best_model.predict_proba(X_te)[:, 1]
             y_pred  = best_model.predict(X_te)
             m = compute_fold_metrics(y_te, y_pred, y_score)
@@ -915,7 +1216,7 @@ def run_nested_cv_for_set(
             fold_counter += 1
 
     mu, sigma = auroc_scores.mean(), auroc_scores.std()
-    print(f"   [{set_name:>15s}] AUROC = {mu:.4f} Â± {sigma:.4f} "
+    print(f"   [{set_name:>15s}] AUROC = {mu:.4f} ± {sigma:.4f} "
           f"[min={auroc_scores.min():.4f}, max={auroc_scores.max():.4f}]")
 
     return {
@@ -937,17 +1238,17 @@ def run_step3_all_sets(
     y: np.ndarray,
     base_seed: int = BASE_SEED,
 ) -> Dict[str, dict]:
-    """STEP 3: Run nested CV for all 8 pattern sets."""
+    """STEP 3: Run nested CV for all 9 pattern sets."""
     print(f"\n{'='*80}")
-    print("STEP 3: NESTED 5Ã—5Ã—5 CROSS-VALIDATION â€” 25 OUTER FOLDS PER SET")
+    print("STEP 3: NESTED 5×5×5 CROSS-VALIDATION — 25 OUTER FOLDS PER SET")
     print(f"{'='*80}")
-    print(f"   Models: LR-L1 (C âˆˆ {LR_C_GRID}) + RF (n_est={RF_N_ESTIMATORS}, "
-          f"depth âˆˆ {RF_DEPTH_GRID})")
+    print(f"   Models: LR-L1 (C ∈ {LR_C_GRID}) + RF (n_est={RF_N_ESTIMATORS}, "
+          f"depth ∈ {RF_DEPTH_GRID})")
 
     cv_results = {}
     for set_name in SET_NAMES_ORDERED:
         fm = feature_matrices[set_name]
-        # Capture models only for 'Ours' â€” needed for Step 6 direction analysis
+        # Capture models only for 'Ours' — needed for Step 6 direction analysis
         capture = (set_name == 'Ours')
         cv_results[set_name] = run_nested_cv_for_set(
             fm['X'], y, set_name=set_name, base_seed=base_seed,
@@ -958,7 +1259,7 @@ def run_step3_all_sets(
 
 
 # ============================================================================
-# STEP 3-BIS â€” TERNARY SENSITIVITY ANALYSIS (Â§A.3)
+# STEP 3-BIS — TERNARY SENSITIVITY ANALYSIS (§A.3)
 # ============================================================================
 
 def run_ternary_sensitivity(
@@ -968,9 +1269,9 @@ def run_ternary_sensitivity(
     y: np.ndarray,
     base_seed: int = BASE_SEED,
 ) -> Dict[str, dict]:
-    """Ternary encoding sensitivity analysis: vacuous â†’ 2 instead of 0."""
+    """Ternary encoding sensitivity analysis: vacuous → 2 instead of 0."""
     print(f"\n{'='*80}")
-    print("STEP 3-BIS: TERNARY SENSITIVITY ANALYSIS (Â§A.3)")
+    print("STEP 3-BIS: TERNARY SENSITIVITY ANALYSIS (§A.3)")
     print(f"{'='*80}")
 
     ternary_results = {}
@@ -991,13 +1292,13 @@ def run_ternary_sensitivity(
         tr = ternary_results.get(set_name, {})
         if not tr.get('skipped', True):
             print(f"\n   [{set_name}] Ternary AUROC = "
-                  f"{tr['mean_auroc']:.4f} Â± {tr['std_auroc']:.4f}")
+                  f"{tr['mean_auroc']:.4f} ± {tr['std_auroc']:.4f}")
 
     return ternary_results
 
 
 # ============================================================================
-# STEP 4 â€” WILCOXON SIGNED-RANK TEST + HOLM-BONFERRONI CORRECTION
+# STEP 4 — WILCOXON SIGNED-RANK TEST + HOLM-BONFERRONI CORRECTION
 # ============================================================================
 
 def rank_biserial_r(x: np.ndarray, y: np.ndarray) -> float:
@@ -1047,7 +1348,7 @@ def run_step4_statistical_tests(
 
     ours_result = cv_results.get('Ours')
     if ours_result is None or ours_result.get('skipped', True):
-        print("   âš ï¸  'Ours' pattern set was skipped â€” cannot run Step 4.")
+        print("   ⚠️  'Ours' pattern set was skipped — cannot run Step 4.")
         return {'skipped': True, 'reason': 'Ours was skipped (k < MIN_FEATURES)'}
 
     ours_auroc = ours_result['auroc_scores']
@@ -1055,9 +1356,9 @@ def run_step4_statistical_tests(
     raw_p_values = []
     test_details = []
 
-    print(f"\n   {'Competitor':>15s} {'k':>5s} {'AUROC':>12s} {'Î”_mean':>9s} "
+    print(f"\n   {'Competitor':>15s} {'k':>5s} {'AUROC':>12s} {'Δ_mean':>9s} "
           f"{'W-stat':>8s} {'p_raw':>10s} {'r_rb':>7s}")
-    print(f"   {'â”€'*75}")
+    print(f"   {'─'*75}")
 
     for comp_name in COMPETITOR_SETS:
         comp_result = cv_results.get(comp_name)
@@ -1101,16 +1402,16 @@ def run_step4_statistical_tests(
         raw_p_values.append(float(p_val))
 
         print(f"   {comp_name:>15s} {comp_result['k']:>5d} "
-              f"{comp_auroc.mean():.4f}Â±{comp_auroc.std():.4f} "
+              f"{comp_auroc.mean():.4f}±{comp_auroc.std():.4f} "
               f"{delta_mean:>+8.4f} {stat:>8.1f} {p_val:>10.4e} {r_rb:>+6.3f}")
 
     # Holm-Bonferroni correction
     raw_p_arr = np.array(raw_p_values)
     adjusted_p, rejected = holm_bonferroni(raw_p_arr, alpha=alpha)
 
-    print(f"\n   Holm-Bonferroni corrected p-values (Î±={alpha}):")
-    print(f"   {'Competitor':>15s} {'p_raw':>10s} {'p_adj':>10s} {'Reject Hâ‚€':>10s}")
-    print(f"   {'â”€'*50}")
+    print(f"\n   Holm-Bonferroni corrected p-values (α={alpha}):")
+    print(f"   {'Competitor':>15s} {'p_raw':>10s} {'p_adj':>10s} {'Reject H₀':>10s}")
+    print(f"   {'─'*50}")
     for i, comp_name in enumerate(COMPETITOR_SETS):
         td = test_details[i]
         td['p_adjusted'] = float(adjusted_p[i])
@@ -1128,7 +1429,7 @@ def run_step4_statistical_tests(
 
 
 # ============================================================================
-# STEP 5 â€” RANDOM-k BASELINE
+# STEP 5 — RANDOM-k BASELINE
 # ============================================================================
 
 def run_step5_random_k_baseline(
@@ -1139,30 +1440,42 @@ def run_step5_random_k_baseline(
     k_target: int,
     n_random_samples: int = N_RANDOM_SAMPLES,
     base_seed: int = BASE_SEED,
+    n_jobs: int = 1,   # >1 → parallelize the 30-sample loop via joblib.Parallel
 ) -> dict:
     """STEP 5: Random-k baseline."""
     print(f"\n{'='*80}")
-    print(f"STEP 5: RANDOM-k BASELINE (k={k_target}, R={n_random_samples})")
+    print(f"STEP 5: RANDOM-k BASELINE (k={k_target}, R={n_random_samples}, n_jobs={n_jobs})")
     print(f"{'='*80}")
 
     if k_target < MIN_FEATURES:
-        print(f"   âš ï¸  k_target={k_target} < {MIN_FEATURES} â€” skipping.")
+        print(f"   ⚠️  k_target={k_target} < {MIN_FEATURES} — skipping.")
         return {'skipped': True, 'k': k_target}
 
     if k_target > len(candidates_all):
-        print(f"   âš ï¸  k_target={k_target} > |candidates_all|={len(candidates_all)} â€” skipping.")
+        print(f"   ⚠️  k_target={k_target} > |candidates_all|={len(candidates_all)} — skipping.")
         return {'skipped': True, 'k': k_target}
 
-    all_auroc_scores = []
-    per_sample_means = []
-
-    for r in range(1, n_random_samples + 1):
+    def _worker_random(r: int) -> dict:
         rng = np.random.RandomState(base_seed + r)
         sample_idx = rng.choice(len(candidates_all), size=k_target, replace=False)
         sampled_patterns = [candidates_all[i] for i in sample_idx]
         X_rand = build_feature_matrix(sampled_patterns, holds_all, case_ids_ordered)
-        result = run_nested_cv_for_set(X_rand, y, set_name=f"Rand-{r:02d}", base_seed=base_seed)
+        # sklearn_n_jobs=1: outer joblib.Parallel is the active parallelism layer
+        return run_nested_cv_for_set(
+            X_rand, y, set_name=f"Rand-{r:02d}", base_seed=base_seed,
+            sklearn_n_jobs=1 if n_jobs != 1 else -1,
+        )
 
+    if n_jobs != 1:
+        raw_results = Parallel(n_jobs=n_jobs, backend='loky')(
+            delayed(_worker_random)(r) for r in range(1, n_random_samples + 1)
+        )
+    else:
+        raw_results = [_worker_random(r) for r in range(1, n_random_samples + 1)]
+
+    all_auroc_scores = []
+    per_sample_means = []
+    for result in raw_results:
         if not result['skipped']:
             all_auroc_scores.append(result['auroc_scores'])
             per_sample_means.append(result['mean_auroc'])
@@ -1174,8 +1487,8 @@ def run_step5_random_k_baseline(
     per_sample_means = np.array(per_sample_means)
 
     print(f"\n   Random-k Baseline Summary (k={k_target}, R={len(per_sample_means)}):")
-    print(f"   Grand mean AUROC:  {all_auroc.mean():.4f} Â± {all_auroc.std():.4f}")
-    print(f"   Per-sample means:  {per_sample_means.mean():.4f} Â± {per_sample_means.std():.4f}")
+    print(f"   Grand mean AUROC:  {all_auroc.mean():.4f} ± {all_auroc.std():.4f}")
+    print(f"   Per-sample means:  {per_sample_means.mean():.4f} ± {per_sample_means.std():.4f}")
 
     return {
         'skipped': False, 'k': k_target,
@@ -1190,7 +1503,7 @@ def run_step5_random_k_baseline(
 
 
 # ============================================================================
-# STEP 6 â€” DIRECTION-AWARE POST-HOC ANALYSIS
+# STEP 6 — DIRECTION-AWARE POST-HOC ANALYSIS
 # ============================================================================
 
 def run_step6_direction_analysis(
@@ -1207,10 +1520,10 @@ def run_step6_direction_analysis(
 
     6b. Learned-direction consistency:
         For each LR-L1 model captured in Step 3 (Ours set), verify that
-        sign(Î²_j) aligns with Phase 1 direction label for feature j.
+        sign(β_j) aligns with Phase 1 direction label for feature j.
             direction_consistency(j) = 1 if:
-                (direction_j == "Positive" AND Î²_j > 0) OR
-                (direction_j == "Negative" AND Î²_j < 0)
+                (direction_j == "Positive" AND β_j > 0) OR
+                (direction_j == "Negative" AND β_j < 0)
         High consistency (>85%) validates Phase 1 statistical direction.
 
     6c. Direction-weighted RF feature importance:
@@ -1229,15 +1542,15 @@ def run_step6_direction_analysis(
 
     ours_res = cv_results.get('Ours', {})
     if ours_res.get('skipped', True):
-        print("   âš ï¸  'Ours' was skipped â€” cannot run direction analysis.")
+        print("   ⚠️  'Ours' was skipped — cannot run direction analysis.")
         return direction_analysis
 
     ours_fm = feature_matrices.get('Ours', {})
     direction_labels = ours_fm.get('direction_labels', [])
     k = ours_fm.get('k', 0)
 
-    # â”€â”€ 6a: Direction-stratified ablation summary â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-    print(f"\n   â”€â”€ 6a: Direction-Stratified Ablation â”€â”€")
+    # ── 6a: Direction-stratified ablation summary ────────────────────────
+    print(f"\n   ── 6a: Direction-Stratified Ablation ──")
 
     for sn in ['Ours', 'Ours_Positive', 'Ours_Negative']:
         res = cv_results.get(sn, {})
@@ -1245,14 +1558,17 @@ def run_step6_direction_analysis(
             print(f"   {sn:>15s}: SKIPPED (k={res.get('k', 0)})")
             direction_analysis['ablation'][sn] = {'skipped': True, 'k': res.get('k', 0)}
         else:
-            print(f"   {sn:>15s}: k={res['k']:>4d}, AUROC = {res['mean_auroc']:.4f} Â± {res['std_auroc']:.4f}")
+            print(f"   {sn:>15s}: k={res['k']:>4d}, AUROC = {res['mean_auroc']:.4f} ± {res['std_auroc']:.4f}")
             direction_analysis['ablation'][sn] = {
                 'skipped': False, 'k': res['k'],
                 'mean_auroc': res['mean_auroc'],
                 'std_auroc': res['std_auroc'],
             }
 
-    # Test: Ours vs Ours_Positive
+    # Step 6a Wilcoxon tests are EXPLORATORY (post-hoc, uncorrected for FWER).
+    # Step 4 (Holm-Bonferroni across 8 competitors) is the primary confirmatory family.
+    # These 2 comparisons are descriptive: they quantify directional sub-population
+    # contribution and do not constitute a separate null-hypothesis test family.
     ours_pos_res = cv_results.get('Ours_Positive', {})
     ours_neg_res = cv_results.get('Ours_Negative', {})
 
@@ -1266,7 +1582,7 @@ def run_step6_direction_analysis(
         else:
             stat, pval = 0.0, 1.0
         r_rb = rank_biserial_r(ours_res['auroc_scores'], sub_res['auroc_scores'])
-        print(f"   Ours vs {sub_name}: Î”={diff.mean():+.4f}, p={pval:.4e}, r_rb={r_rb:+.3f}")
+        print(f"   Ours vs {sub_name}: Δ={diff.mean():+.4f}, p={pval:.4e}, r_rb={r_rb:+.3f}")
         direction_analysis['ablation'][f'ours_vs_{sub_name}'] = {
             'delta_mean': float(diff.mean()),
             'p_wilcoxon': float(pval),
@@ -1277,19 +1593,19 @@ def run_step6_direction_analysis(
     if not ours_pos_res.get('skipped', True) and not ours_neg_res.get('skipped', True):
         best_sub = max(ours_pos_res['mean_auroc'], ours_neg_res['mean_auroc'])
         complementarity_delta = ours_res['mean_auroc'] - best_sub
-        print(f"\n   Complementarity Î” = Ours - max(Ours_Pos, Ours_Neg) = {complementarity_delta:+.4f}")
+        print(f"\n   Complementarity Δ = Ours - max(Ours_Pos, Ours_Neg) = {complementarity_delta:+.4f}")
         if complementarity_delta > 0:
-            print(f"   âœ“ Positive complementarity: combining both directions yields better AUROC")
+            print(f"   ✓ Positive complementarity: combining both directions yields better AUROC")
         else:
-            print(f"   âš ï¸  No complementarity: best sub-set matches or exceeds combined")
+            print(f"   ⚠️  No complementarity: best sub-set matches or exceeds combined")
         direction_analysis['ablation']['complementarity_delta'] = float(complementarity_delta)
 
-    # â”€â”€ 6b: Learned-direction consistency â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-    print(f"\n   â”€â”€ 6b: Learned-Direction Consistency (LR Î²-sign) â”€â”€")
+    # ── 6b: Learned-direction consistency ────────────────────────────────
+    print(f"\n   ── 6b: Learned-Direction Consistency (LR β-sign) ──")
 
     captured = ours_res.get('captured_models', [])
     if not captured or k == 0:
-        print("   âš ï¸  No captured models available for consistency analysis.")
+        print("   ⚠️  No captured models available for consistency analysis.")
     else:
         all_consistencies = []
         n_lr_folds = 0
@@ -1313,11 +1629,11 @@ def run_step6_direction_analysis(
                         continue
                     fold_total += 1
                     # Positive direction: pattern is more prevalent in class 1
-                    # â†’ LR should learn Î² > 0 (X=1 increases P(Y=1))
+                    # → LR should learn β > 0 (X=1 increases P(Y=1))
                     # Negative direction: pattern is more prevalent in class 0
-                    # â†’ LR should learn Î² < 0 (X=1 decreases P(Y=1))
+                    # → LR should learn β < 0 (X=1 decreases P(Y=1))
                     if coefs[j] == 0.0:
-                        # L1 zeroed this feature â€” skip (no directional evidence)
+                        # L1 zeroed this feature — skip (no directional evidence)
                         fold_total -= 1
                         continue
 
@@ -1339,16 +1655,18 @@ def run_step6_direction_analysis(
             mean_consistency = float(np.mean(all_consistencies))
             std_consistency = float(np.std(all_consistencies))
             print(f"   LR-L1 folds analysed: {n_lr_folds}")
-            print(f"   RF folds (skipped for Î² analysis): {n_rf_folds}")
-            print(f"   Mean direction consistency: {mean_consistency:.3f} Â± {std_consistency:.3f}")
-            print(f"   (1.0 = perfect alignment between Phase 1 direction and learned Î² sign)")
+            print(f"   RF folds (skipped for β analysis): {n_rf_folds}")
+            print(f"   Mean direction consistency: {mean_consistency:.3f} ± {std_consistency:.3f}")
+            print(f"   (1.0 = perfect alignment between Phase 1 direction and learned β sign)")
 
+            # Thresholds are informal benchmarks (no formal citation):
+            #   ≥0.85 = HIGH, ≥0.70 = MODERATE, <0.70 = LOW.
             if mean_consistency >= 0.85:
-                print(f"   âœ“ HIGH consistency â€” Phase 1 direction labels are validated by LR")
+                print(f"   ✓ HIGH consistency (≥0.85) — Phase 1 direction labels validated by LR")
             elif mean_consistency >= 0.70:
-                print(f"   ~ MODERATE consistency â€” most directions confirmed, some noise")
+                print(f"   ~ MODERATE consistency (≥0.70) — most directions confirmed, some noise")
             else:
-                print(f"   âš ï¸  LOW consistency â€” Phase 1 direction labels partially contradicted")
+                print(f"   ⚠️  LOW consistency (<0.70) — Phase 1 direction labels partially contradicted")
 
             # Per-feature consistency (across LR folds)
             per_feature_rate = np.where(
@@ -1375,16 +1693,16 @@ def run_step6_direction_analysis(
                 'n_never_consistent': n_never_consistent,
             }
         else:
-            print("   âš ï¸  No LR-L1 folds captured â€” all outer folds selected RF.")
+            print("   ⚠️  No LR-L1 folds captured — all outer folds selected RF.")
             direction_analysis['consistency'] = {'n_lr_folds': 0, 'note': 'All folds selected RF'}
 
-    # â”€â”€ 6c: Direction-weighted RF feature importance â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-    print(f"\n   â”€â”€ 6c: Direction-Weighted RF Feature Importance (MDI) â”€â”€")
+    # ── 6c: Direction-weighted RF feature importance ─────────────────────
+    print(f"\n   ── 6c: Direction-Weighted RF Feature Importance (MDI) ──")
 
     rf_models = [cm for cm in captured if cm['type'] == 'RF' and hasattr(cm['model'], 'feature_importances_')]
 
     if not rf_models or k == 0:
-        print("   âš ï¸  No RF models captured for importance analysis.")
+        print("   ⚠️  No RF models captured for importance analysis.")
     else:
         # Aggregate MDI across all RF folds
         all_importances = np.zeros((len(rf_models), k))
@@ -1419,7 +1737,7 @@ def run_step6_direction_analysis(
         patterns = ours_fm.get('patterns', [])
         print(f"\n   Top-10 features by mean MDI:")
         print(f"   {'Rank':>4s} {'Dir':>8s} {'MDI':>8s} {'Pattern'}")
-        print(f"   {'â”€'*80}")
+        print(f"   {'─'*80}")
         for rank, idx in enumerate(top_idx, 1):
             pat = patterns[idx] if idx < len(patterns) else ('?', '?', '?')
             dlabel = direction_labels[idx] if idx < len(direction_labels) else '?'
@@ -1451,13 +1769,13 @@ def run_step6_direction_analysis(
 
 
 # ============================================================================
-# OUTPUT GENERATION â€” TABLES, PLOTS, JSON
+# OUTPUT GENERATION — TABLES, PLOTS, JSON
 # ============================================================================
 
 def save_plot_pdf(fig, filepath, dpi=300):
     fig.savefig(filepath, dpi=dpi, bbox_inches='tight', format='pdf')
     plt.close(fig)
-    print(f"      âœ“ Saved: {os.path.basename(filepath)}")
+    print(f"      ✓ Saved: {os.path.basename(filepath)}")
 
 
 def generate_rq2_outputs(
@@ -1481,14 +1799,14 @@ def generate_rq2_outputs(
     n1 = int(y.sum())
     n0 = len(y) - n1
 
-    # â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+    # ════════════════════════════════════════════════════════════════════════
     # JSON OUTPUT
-    # â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+    # ════════════════════════════════════════════════════════════════════════
     print(f"\n   Generating JSON output...")
 
     json_out = {
-        'framework': 'RQ2 â€” Discriminative Signal Evaluation (Direction-Aware)',
-        'version': '3.0-SEPSIS-DIRECTION-AWARE',
+        'framework': 'RQ2 — Discriminative Signal Evaluation (Direction-Aware)',
+        'version': '4.0-SEPSIS-P1-ALIGNED',
         'log': log_name,
         'timestamp': datetime.now().isoformat(),
         'configuration': {
@@ -1563,45 +1881,45 @@ def generate_rq2_outputs(
     json_path = os.path.join(log_dir, 'rq2_results.json')
     with open(json_path, 'w', encoding='utf-8') as f:
         json.dump(json_out, f, indent=2, ensure_ascii=False, default=str)
-    print(f"   âœ“ JSON: {json_path}")
+    print(f"   ✓ JSON: {json_path}")
 
-    # â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+    # ════════════════════════════════════════════════════════════════════════
     # TEXT REPORT
-    # â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+    # ════════════════════════════════════════════════════════════════════════
     print(f"   Generating text report...")
     rpt = []
     rpt.append("=" * 100)
-    rpt.append(f"RQ2 â€” DO PATTERNS CARRY DISCRIMINATIVE SIGNAL?  [{log_name}]")
-    rpt.append(f"Version: 3.0-SEPSIS-DIRECTION-AWARE")
+    rpt.append(f"RQ2 — DO PATTERNS CARRY DISCRIMINATIVE SIGNAL?  [{log_name}]")
+    rpt.append(f"Version: 4.0-SEPSIS-P1-ALIGNED")
     rpt.append("=" * 100)
     rpt.append(f"Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
     rpt.append("")
 
-    rpt.append("â”€" * 100)
+    rpt.append("─" * 100)
     rpt.append("DATASET")
-    rpt.append("â”€" * 100)
+    rpt.append("─" * 100)
     rpt.append(f"  n = {len(y):,}  (Class 1 Return ER: {n1:,}, Class 0 No Return ER: {n0:,})")
     rpt.append(f"  Class ratio: {n1/len(y)*100:.1f}% / {n0/len(y)*100:.1f}%")
     rpt.append(f"  Outcome signal stripped from traces: True (matching Phase 1)")
     rpt.append("")
 
-    rpt.append("â”€" * 100)
+    rpt.append("─" * 100)
     rpt.append("EXPERIMENTAL SETUP (reproducibility)")
-    rpt.append("â”€" * 100)
-    rpt.append(f"  Nested CV: {N_OUTER_REPEATS}Ã—{N_OUTER_SPLITS} outer Ã— {N_INNER_SPLITS} inner = 25 folds")
+    rpt.append("─" * 100)
+    rpt.append(f"  Nested CV: {N_OUTER_REPEATS}×{N_OUTER_SPLITS} outer × {N_INNER_SPLITS} inner = 25 folds")
     rpt.append(f"  LR-L1: penalty='l1', solver='saga', max_iter=5000, class_weight='balanced'")
-    rpt.append(f"         C âˆˆ {LR_C_GRID}")
+    rpt.append(f"         C ∈ {LR_C_GRID}")
     rpt.append(f"  RF:    n_estimators={RF_N_ESTIMATORS}, class_weight='balanced'")
-    rpt.append(f"         max_depth âˆˆ {RF_DEPTH_GRID}")
+    rpt.append(f"         max_depth ∈ {RF_DEPTH_GRID}")
     rpt.append(f"  Scoring: 'roc_auc' (inner loop)")
-    rpt.append(f"  Feature gate: k < {MIN_FEATURES} â†’ skip")
+    rpt.append(f"  Feature gate: k < {MIN_FEATURES} → skip")
     rpt.append(f"  Random-k: R={N_RANDOM_SAMPLES} samples, k = |Ours|")
     rpt.append(f"  Base seed: {BASE_SEED}")
     rpt.append("")
 
-    rpt.append("â”€" * 100)
+    rpt.append("─" * 100)
     rpt.append("PATTERN SET SIZES (direction-aware)")
-    rpt.append("â”€" * 100)
+    rpt.append("─" * 100)
     for name in SET_NAMES_ORDERED:
         fm = feature_matrices[name]
         n_pos = sum(1 for d in fm['direction_labels'] if d == 'Positive')
@@ -1610,12 +1928,12 @@ def generate_rq2_outputs(
                     f"(Pos: {n_pos}, Neg: {n_neg})")
     rpt.append("")
 
-    rpt.append("â”€" * 100)
+    rpt.append("─" * 100)
     rpt.append("STEP 3 RESULTS: NESTED CV")
-    rpt.append("â”€" * 100)
+    rpt.append("─" * 100)
     rpt.append(f"  {'Set':>15s} {'k':>6s} {'AUROC':>14s} {'MCC':>14s} "
-               f"{'BalAcc':>14s} {'Cohen Îº':>14s}")
-    rpt.append(f"  {'â”€'*85}")
+               f"{'BalAcc':>14s} {'Cohen κ':>14s}")
+    rpt.append(f"  {'─'*85}")
     for name in SET_NAMES_ORDERED:
         res = cv_results[name]
         if res.get('skipped', False):
@@ -1623,17 +1941,17 @@ def generate_rq2_outputs(
         else:
             rpt.append(
                 f"  {name:>15s} {res['k']:>6d} "
-                f"{res['mean_auroc']:.4f}Â±{res['std_auroc']:.4f} "
-                f"{res['mcc_scores'].mean():.4f}Â±{res['mcc_scores'].std():.4f} "
-                f"{res['balacc_scores'].mean():.4f}Â±{res['balacc_scores'].std():.4f} "
-                f"{res['kappa_scores'].mean():.4f}Â±{res['kappa_scores'].std():.4f}"
+                f"{res['mean_auroc']:.4f}±{res['std_auroc']:.4f} "
+                f"{res['mcc_scores'].mean():.4f}±{res['mcc_scores'].std():.4f} "
+                f"{res['balacc_scores'].mean():.4f}±{res['balacc_scores'].std():.4f} "
+                f"{res['kappa_scores'].mean():.4f}±{res['kappa_scores'].std():.4f}"
             )
     rpt.append("")
 
     # Model selection stability
-    rpt.append("â”€" * 100)
+    rpt.append("─" * 100)
     rpt.append("MODEL SELECTION STABILITY")
-    rpt.append("â”€" * 100)
+    rpt.append("─" * 100)
     for name in SET_NAMES_ORDERED:
         res = cv_results[name]
         if res.get('skipped', False) or not res.get('best_estimators'):
@@ -1647,15 +1965,15 @@ def generate_rq2_outputs(
 
     # Step 4
     if not stat_tests.get('skipped', True):
-        rpt.append("â”€" * 100)
+        rpt.append("─" * 100)
         rpt.append("STEP 4: WILCOXON SIGNED-RANK TESTS (Ours vs competitors)")
-        rpt.append("â”€" * 100)
-        rpt.append(f"  Ours AUROC: {stat_tests['ours_mean_auroc']:.4f} Â± {stat_tests['ours_std_auroc']:.4f}")
-        rpt.append(f"  Î± = {stat_tests['alpha']}, Holm-Bonferroni corrected")
+        rpt.append("─" * 100)
+        rpt.append(f"  Ours AUROC: {stat_tests['ours_mean_auroc']:.4f} ± {stat_tests['ours_std_auroc']:.4f}")
+        rpt.append(f"  α = {stat_tests['alpha']}, Holm-Bonferroni corrected")
         rpt.append("")
-        rpt.append(f"  {'Competitor':>15s} {'Î”_mean':>9s} {'p_raw':>10s} {'p_adj':>10s} "
+        rpt.append(f"  {'Competitor':>15s} {'Δ_mean':>9s} {'p_raw':>10s} {'p_adj':>10s} "
                     f"{'r_rb':>7s} {'Reject':>8s}")
-        rpt.append(f"  {'â”€'*65}")
+        rpt.append(f"  {'─'*65}")
         for td in stat_tests['tests']:
             if td.get('skipped', False):
                 rpt.append(f"  {td['competitor']:>15s} {'SKIPPED':>9s}")
@@ -1669,21 +1987,21 @@ def generate_rq2_outputs(
 
     # Step 5
     if not random_baseline.get('skipped', True):
-        rpt.append("â”€" * 100)
+        rpt.append("─" * 100)
         rpt.append(f"STEP 5: RANDOM-k BASELINE (k={random_baseline['k']}, R={random_baseline['n_random_samples']})")
-        rpt.append("â”€" * 100)
-        rpt.append(f"  Grand mean AUROC: {random_baseline['grand_mean']:.4f} Â± {random_baseline['grand_std']:.4f}")
+        rpt.append("─" * 100)
+        rpt.append(f"  Grand mean AUROC: {random_baseline['grand_mean']:.4f} ± {random_baseline['grand_std']:.4f}")
         ours_res = cv_results.get('Ours')
         if ours_res and not ours_res.get('skipped', False):
             delta = ours_res['mean_auroc'] - random_baseline['grand_mean']
-            rpt.append(f"  Ours âˆ’ Random-k: {delta:+.4f}")
+            rpt.append(f"  Ours − Random-k: {delta:+.4f}")
         rpt.append("")
 
     # Ternary sensitivity
     if ternary_results is not None:
-        rpt.append("â”€" * 100)
-        rpt.append("Â§A.3: TERNARY SENSITIVITY ANALYSIS (vacuous â†’ 2)")
-        rpt.append("â”€" * 100)
+        rpt.append("─" * 100)
+        rpt.append("§A.3: TERNARY SENSITIVITY ANALYSIS (vacuous → 2)")
+        rpt.append("─" * 100)
         for name in ['Ours', 'All']:
             tr = ternary_results.get(name, {})
             binary_res = cv_results.get(name, {})
@@ -1691,13 +2009,13 @@ def generate_rq2_outputs(
                 continue
             delta = tr['mean_auroc'] - binary_res['mean_auroc']
             rpt.append(f"  {name}: binary AUROC = {binary_res['mean_auroc']:.4f}, "
-                        f"ternary AUROC = {tr['mean_auroc']:.4f}, Î” = {delta:+.4f}")
+                        f"ternary AUROC = {tr['mean_auroc']:.4f}, Δ = {delta:+.4f}")
         rpt.append("")
 
     # Step 6: Direction analysis
-    rpt.append("â”€" * 100)
+    rpt.append("─" * 100)
     rpt.append("STEP 6: DIRECTION-AWARE POST-HOC ANALYSIS")
-    rpt.append("â”€" * 100)
+    rpt.append("─" * 100)
     rpt.append("")
     rpt.append("  6a. Direction-Stratified Ablation:")
     for sn in ['Ours', 'Ours_Positive', 'Ours_Negative']:
@@ -1705,17 +2023,17 @@ def generate_rq2_outputs(
         if abl.get('skipped', True):
             rpt.append(f"    {sn:>15s}: SKIPPED (k={abl.get('k', 0)})")
         else:
-            rpt.append(f"    {sn:>15s}: k={abl['k']}, AUROC = {abl['mean_auroc']:.4f} Â± {abl['std_auroc']:.4f}")
+            rpt.append(f"    {sn:>15s}: k={abl['k']}, AUROC = {abl['mean_auroc']:.4f} ± {abl['std_auroc']:.4f}")
     comp_delta = direction_analysis.get('ablation', {}).get('complementarity_delta')
     if comp_delta is not None:
-        rpt.append(f"    Complementarity Î” = {comp_delta:+.4f}")
+        rpt.append(f"    Complementarity Δ = {comp_delta:+.4f}")
     rpt.append("")
 
-    rpt.append("  6b. Learned-Direction Consistency (LR Î²-sign):")
+    rpt.append("  6b. Learned-Direction Consistency (LR β-sign):")
     cons = direction_analysis.get('consistency', {})
     if cons.get('n_lr_folds', 0) > 0:
         rpt.append(f"    LR-L1 folds: {cons['n_lr_folds']}")
-        rpt.append(f"    Mean consistency: {cons['mean_consistency']:.3f} Â± {cons['std_consistency']:.3f}")
+        rpt.append(f"    Mean consistency: {cons['mean_consistency']:.3f} ± {cons['std_consistency']:.3f}")
         rpt.append(f"    Always consistent: {cons.get('n_always_consistent', 0)}/{feature_matrices['Ours']['k']}")
     else:
         rpt.append(f"    No LR-L1 folds available.")
@@ -1734,9 +2052,9 @@ def generate_rq2_outputs(
     rpt.append("")
 
     # Timing
-    rpt.append("â”€" * 100)
+    rpt.append("─" * 100)
     rpt.append("TIMING")
-    rpt.append("â”€" * 100)
+    rpt.append("─" * 100)
     for k_t, v_t in timing.items():
         rpt.append(f"  {k_t:>30s}: {v_t:.1f}s")
     rpt.append("")
@@ -1745,11 +2063,11 @@ def generate_rq2_outputs(
     report_path = os.path.join(log_dir, 'rq2_report.txt')
     with open(report_path, 'w', encoding='utf-8') as f:
         f.write('\n'.join(rpt))
-    print(f"   âœ“ Report: {report_path}")
+    print(f"   ✓ Report: {report_path}")
 
-    # â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+    # ════════════════════════════════════════════════════════════════════════
     # VISUALIZATIONS
-    # â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+    # ════════════════════════════════════════════════════════════════════════
     generate_rq2_plots(
         log_name, cv_results, feature_matrices, stat_tests,
         random_baseline, ternary_results, direction_analysis, plots_dir
@@ -1770,9 +2088,9 @@ def generate_rq2_plots(
 
     print(f"\n   Generating plots...")
 
-    # â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+    # ═══════════════════════════════════════════════════════════════════════
     # PLOT 1: AUROC Boxplot Comparison (all 8 sets + Random-k)
-    # â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+    # ═══════════════════════════════════════════════════════════════════════
     print("      [1/8] AUROC Boxplot Comparison...")
 
     plot_data, plot_labels, plot_colors = [], [], []
@@ -1805,20 +2123,20 @@ def generate_rq2_plots(
 
         ax.set_xticklabels(plot_labels, fontsize=8)
         ax.set_ylabel('AUROC', fontweight='bold')
-        ax.set_title(f'RQ2: AUROC Comparison Across Pattern Sets â€” {log_name}', fontweight='bold')
+        ax.set_title(f'RQ2: AUROC Comparison Across Pattern Sets — {log_name}', fontweight='bold')
         ax.axhline(0.5, color='gray', linestyle='--', linewidth=1, alpha=0.5, label='Chance (0.5)')
         ax.legend(loc='lower right', frameon=True, fancybox=False, edgecolor='black')
         for sp in ax.spines.values(): sp.set_visible(True)
         plt.tight_layout()
         save_plot_pdf(fig, os.path.join(plots_dir, '01_auroc_boxplot.pdf'))
 
-    # â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+    # ═══════════════════════════════════════════════════════════════════════
     # PLOT 2: Multi-Metric Bar Chart
-    # â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+    # ═══════════════════════════════════════════════════════════════════════
     print("      [2/8] Multi-Metric Bar Chart...")
 
     metrics = ['auroc', 'mcc', 'balacc', 'kappa']
-    metric_labels = ['AUROC', 'MCC', 'Balanced Acc.', "Cohen's Îº"]
+    metric_labels = ['AUROC', 'MCC', 'Balanced Acc.', "Cohen's κ"]
     active_sets = [n for n in SET_NAMES_ORDERED if not cv_results[n].get('skipped', False)]
 
     if active_sets:
@@ -1842,13 +2160,13 @@ def generate_rq2_plots(
             ax.set_title(metric_label, fontweight='bold')
             for sp in ax.spines.values(): sp.set_visible(True)
 
-        plt.suptitle(f'RQ2: Multi-Metric Comparison â€” {log_name}', fontweight='bold', y=1.02)
+        plt.suptitle(f'RQ2: Multi-Metric Comparison — {log_name}', fontweight='bold', y=1.02)
         plt.tight_layout()
         save_plot_pdf(fig, os.path.join(plots_dir, '02_multimetric_bars.pdf'))
 
-    # â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+    # ═══════════════════════════════════════════════════════════════════════
     # PLOT 3: Effect Size Plot
-    # â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+    # ═══════════════════════════════════════════════════════════════════════
     print("      [3/8] Effect Size Plot...")
 
     if not stat_tests.get('skipped', True):
@@ -1872,17 +2190,17 @@ def generate_rq2_plots(
 
             ax.set_yticks(y_pos)
             ax.set_yticklabels(comp_names, fontsize=10)
-            ax.set_xlabel('Rank-biserial $r$ (Ours âˆ’ Competitor)', fontweight='bold')
+            ax.set_xlabel('Rank-biserial $r$ (Ours − Competitor)', fontweight='bold')
             ax.set_title(f'RQ2: Effect Sizes [{log_name}]\n'
-                         f'(* = significant after Holm-Bonferroni, Î±=0.05)', fontweight='bold')
+                         f'(* = significant after Holm-Bonferroni, α=0.05)', fontweight='bold')
             ax.axvline(0, color='black', linewidth=0.8)
             for sp in ax.spines.values(): sp.set_visible(True)
             plt.tight_layout()
             save_plot_pdf(fig, os.path.join(plots_dir, '03_effect_sizes.pdf'))
 
-    # â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+    # ═══════════════════════════════════════════════════════════════════════
     # PLOT 4: Random-k Baseline Distribution
-    # â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+    # ═══════════════════════════════════════════════════════════════════════
     print("      [4/8] Random-k Baseline Distribution...")
 
     ours_res = cv_results.get('Ours')
@@ -1903,15 +2221,15 @@ def generate_rq2_plots(
 
         ax.set_xlabel('Mean AUROC (per random sample)', fontweight='bold')
         ax.set_ylabel('Count', fontweight='bold')
-        ax.set_title(f'RQ2: Ours vs Random-k Baseline â€” {log_name}', fontweight='bold')
+        ax.set_title(f'RQ2: Ours vs Random-k Baseline — {log_name}', fontweight='bold')
         ax.legend(frameon=True, fancybox=False, edgecolor='black')
         for sp in ax.spines.values(): sp.set_visible(True)
         plt.tight_layout()
         save_plot_pdf(fig, os.path.join(plots_dir, '04_random_k_baseline.pdf'))
 
-    # â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+    # ═══════════════════════════════════════════════════════════════════════
     # PLOT 5: Model Selection Stability
-    # â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+    # ═══════════════════════════════════════════════════════════════════════
     print("      [5/8] Model Selection Stability...")
 
     active_with_ests = [
@@ -1935,16 +2253,16 @@ def generate_rq2_plots(
         ax.set_xticks(x)
         ax.set_xticklabels(active_with_ests, fontsize=9, rotation=30, ha='right')
         ax.set_ylabel('Fraction of Outer Folds', fontweight='bold')
-        ax.set_title(f'RQ2: Model Selection Stability â€” {log_name}', fontweight='bold')
+        ax.set_title(f'RQ2: Model Selection Stability — {log_name}', fontweight='bold')
         ax.legend(frameon=True, fancybox=False, edgecolor='black')
         ax.set_ylim(0, 1.05)
         for sp in ax.spines.values(): sp.set_visible(True)
         plt.tight_layout()
         save_plot_pdf(fig, os.path.join(plots_dir, '05_model_selection_stability.pdf'))
 
-    # â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+    # ═══════════════════════════════════════════════════════════════════════
     # PLOT 6: Ternary Sensitivity
-    # â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+    # ═══════════════════════════════════════════════════════════════════════
     print("      [6/8] Ternary Sensitivity Plot...")
 
     if ternary_results is not None:
@@ -1969,20 +2287,20 @@ def generate_rq2_plots(
                    label='Binary (CWA)')
             ax.bar(x + w/2, ternary_means, w, yerr=ternary_stds, capsize=5,
                    color=COLORS['accent'], alpha=0.8, edgecolor='black', linewidth=1.2,
-                   label='Ternary (vac â†’ 2)')
+                   label='Ternary (vac → 2)')
 
             ax.set_xticks(x)
             ax.set_xticklabels([p[0] for p in pairs], fontsize=11)
             ax.set_ylabel('AUROC', fontweight='bold')
-            ax.set_title(f'Â§A.3: Binary vs Ternary Encoding â€” {log_name}', fontweight='bold')
+            ax.set_title(f'§A.3: Binary vs Ternary Encoding — {log_name}', fontweight='bold')
             ax.legend(frameon=True, fancybox=False, edgecolor='black')
             for sp in ax.spines.values(): sp.set_visible(True)
             plt.tight_layout()
             save_plot_pdf(fig, os.path.join(plots_dir, '06_ternary_sensitivity.pdf'))
 
-    # â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+    # ═══════════════════════════════════════════════════════════════════════
     # PLOT 7: Direction-Stratified Ablation (Step 6a)
-    # â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+    # ═══════════════════════════════════════════════════════════════════════
     print("      [7/8] Direction-Stratified Ablation...")
 
     dir_sets = ['Ours', 'Ours_Positive', 'Ours_Negative']
@@ -2006,16 +2324,16 @@ def generate_rq2_plots(
 
         ax.set_xticklabels(dir_labels, fontsize=10)
         ax.set_ylabel('AUROC', fontweight='bold')
-        ax.set_title(f'Step 6a: Direction-Stratified Ablation â€” {log_name}\n'
+        ax.set_title(f'Step 6a: Direction-Stratified Ablation — {log_name}\n'
                      f'Do both Positive and Negative patterns contribute?', fontweight='bold')
         ax.axhline(0.5, color='gray', linestyle='--', linewidth=1, alpha=0.5)
         for sp in ax.spines.values(): sp.set_visible(True)
         plt.tight_layout()
         save_plot_pdf(fig, os.path.join(plots_dir, '07_direction_ablation.pdf'))
 
-    # â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+    # ═══════════════════════════════════════════════════════════════════════
     # PLOT 8: Direction Consistency + Importance (Step 6b/c combined)
-    # â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+    # ═══════════════════════════════════════════════════════════════════════
     print("      [8/8] Direction Consistency & Importance...")
 
     cons = direction_analysis.get('consistency', {})
@@ -2042,7 +2360,7 @@ def generate_rq2_plots(
                        label='High threshold (0.85)')
             ax.set_xlabel('Direction Consistency (per fold)', fontweight='bold')
             ax.set_ylabel('Count', fontweight='bold')
-            ax.set_title('Step 6b: LR Î²-Sign vs Phase 1 Direction', fontweight='bold')
+            ax.set_title('Step 6b: LR β-Sign vs Phase 1 Direction', fontweight='bold')
             ax.legend(frameon=True, fancybox=False, edgecolor='black')
             ax.set_xlim(0, 1.05)
             for sp in ax.spines.values(): sp.set_visible(True)
@@ -2067,7 +2385,7 @@ def generate_rq2_plots(
         plt.tight_layout()
         save_plot_pdf(fig, os.path.join(plots_dir, '08_direction_consistency_importance.pdf'))
 
-    print(f"   âœ“ Generated visualizations in {plots_dir}")
+    print(f"   ✓ Generated visualizations in {plots_dir}")
 
 
 # ============================================================================
@@ -2080,31 +2398,32 @@ def run_rq2_single_log(
     output_dir: str,
     base_seed: int = BASE_SEED,
     holds_all_precomputed: Optional[Dict] = None,
+    n_jobs: int = 1,   # forwarded to run_step5_random_k_baseline
 ) -> dict:
-    """Execute Steps 1â€“6 for a single event log and generate all outputs."""
+    """Execute Steps 1–6 for a single event log and generate all outputs."""
     timing = {}
     t0 = time.time()
 
-    # â”€â”€ Step 1 â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    # ── Step 1 ──────────────────────────────────────────────────────────
     t_step = time.time()
     holds_all, case_data, case_ids_ordered, y, candidates_all, phase1_results = \
         retrieve_phase1_artifacts(log_config, log_name,
                                  holds_all_precomputed=holds_all_precomputed)
     timing['step1_retrieve'] = time.time() - t_step
 
-    # â”€â”€ Step 2 â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    # ── Step 2 ──────────────────────────────────────────────────────────
     t_step = time.time()
     feature_matrices, all_pats_classified = build_all_feature_matrices(
         phase1_results, holds_all, case_ids_ordered, candidates_all
     )
     timing['step2_feature_matrices'] = time.time() - t_step
 
-    # â”€â”€ Step 3 â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    # ── Step 3 ──────────────────────────────────────────────────────────
     t_step = time.time()
     cv_results = run_step3_all_sets(feature_matrices, y, base_seed=base_seed)
     timing['step3_nested_cv'] = time.time() - t_step
 
-    # â”€â”€ Step 3-bis: Ternary sensitivity â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    # ── Step 3-bis: Ternary sensitivity ─────────────────────────────────
     ternary_results = None
     if RUN_TERNARY_SENSITIVITY:
         t_step = time.time()
@@ -2113,28 +2432,29 @@ def run_rq2_single_log(
         )
         timing['step3bis_ternary'] = time.time() - t_step
 
-    # â”€â”€ Step 4 â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    # ── Step 4 ──────────────────────────────────────────────────────────
     t_step = time.time()
     stat_tests = run_step4_statistical_tests(cv_results, alpha=0.05)
     timing['step4_wilcoxon'] = time.time() - t_step
 
-    # â”€â”€ Step 5 â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    # ── Step 5 ──────────────────────────────────────────────────────────
     ours_k = feature_matrices['Ours']['k']
     t_step = time.time()
     random_baseline = run_step5_random_k_baseline(
         candidates_all, holds_all, case_ids_ordered, y,
         k_target=ours_k, n_random_samples=N_RANDOM_SAMPLES, base_seed=base_seed,
+        n_jobs=n_jobs,
     )
     timing['step5_random_k'] = time.time() - t_step
 
-    # â”€â”€ Step 6: Direction-aware analysis â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    # ── Step 6: Direction-aware analysis ────────────────────────────────
     t_step = time.time()
     direction_analysis = run_step6_direction_analysis(cv_results, feature_matrices)
     timing['step6_direction'] = time.time() - t_step
 
     timing['total'] = time.time() - t0
 
-    # â”€â”€ Output generation â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    # ── Output generation ───────────────────────────────────────────────
     generate_rq2_outputs(
         log_name, cv_results, feature_matrices, stat_tests,
         random_baseline, ternary_results, direction_analysis,
@@ -2179,19 +2499,19 @@ def validate_log_config(log_name: str, log_config: dict) -> List[str]:
 
 def main():
     print("\n" + "=" * 100)
-    print("RQ2 â€” DO PATTERNS CARRY DISCRIMINATIVE SIGNAL?")
-    print("Version 3.0 â€” SEPSIS â€” DIRECTION-AWARE")
+    print("RQ2 — DO PATTERNS CARRY DISCRIMINATIVE SIGNAL?")
+    print("Version 4.0 — SEPSIS — P1-ALIGNED (is_significant_final, Hou-Storey single gate)")
     print("=" * 100)
-    print(f"\nðŸŽ¯ EXPERIMENTAL DESIGN:")
-    print(f"   8 pattern sets: Ours, Ours_Positive, Ours_Negative, "
-          f"Discriminative, Structural, BH, Union, All")
-    print(f"   Nested CV: {N_OUTER_REPEATS}Ã—{N_OUTER_SPLITS} outer Ã— {N_INNER_SPLITS} inner")
-    print(f"   Models: LR-L1 (C âˆˆ {LR_C_GRID}) + RF (n_est={RF_N_ESTIMATORS}, "
-          f"depth âˆˆ {RF_DEPTH_GRID})")
+    print(f"\n🎯 EXPERIMENTAL DESIGN:")
+    print(f"   9 pattern sets: Ours (is_significant_final), Ours_Both, Ours_Disc_Only, "
+          f"Ours_Positive, Ours_Negative, Structural, BH, Union, All")
+    print(f"   Nested CV: {N_OUTER_REPEATS}×{N_OUTER_SPLITS} outer × {N_INNER_SPLITS} inner")
+    print(f"   Models: LR-L1 (C ∈ {LR_C_GRID}) + RF (n_est={RF_N_ESTIMATORS}, "
+          f"depth ∈ {RF_DEPTH_GRID})")
     print(f"   Statistical test: Wilcoxon signed-rank + Holm-Bonferroni ({len(COMPETITOR_SETS)} comparisons)")
-    print(f"   Random baseline: {N_RANDOM_SAMPLES} samples Ã— same CV")
+    print(f"   Random baseline: {N_RANDOM_SAMPLES} samples × same CV")
     print(f"   Ternary sensitivity: {RUN_TERNARY_SENSITIVITY}")
-    print(f"   Direction analysis: Step 6 (ablation + Î²-sign consistency + RF MDI)")
+    print(f"   Direction analysis: Step 6 (ablation + β-sign consistency + RF MDI)")
     print(f"   Outcome stripping: 'Return ER' removed from traces (Phase 1 consistency)")
     print(f"   Base seed: {BASE_SEED}")
     print("=" * 100)
@@ -2201,69 +2521,78 @@ def main():
     for log_name, log_config in LOG_CONFIGS.items():
         missing = validate_log_config(log_name, log_config)
         if missing:
-            print(f"\nâš ï¸  SKIPPING {log_name} â€” missing files:")
+            print(f"\n⚠️  SKIPPING {log_name} — missing files:")
             for m in missing:
                 print(f"   {m}")
             continue
 
-        print(f"\n{'â•'*100}")
+        print(f"\n{'═'*100}")
         print(f"PROCESSING LOG: {log_name}")
-        print(f"{'â•'*100}")
+        print(f"{'═'*100}")
 
         total_start = time.time()
 
         rq2_result = run_rq2_single_log(
-            log_name, log_config, RQ2_OUTPUT_DIR, base_seed=BASE_SEED
+            log_name, log_config, RQ2_OUTPUT_DIR, base_seed=BASE_SEED,
+            n_jobs=N_JOBS,
         )
 
         total_time = time.time() - total_start
 
-        # â”€â”€ Final summary â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+        # ── Final summary ────────────────────────────────────────────────
         print(f"\n{'='*100}")
-        print(f"âœ… RQ2 COMPLETE â€” {log_name}")
+        print(f"✅ RQ2 COMPLETE — {log_name}")
         print(f"{'='*100}")
         print(f"   Total time: {total_time:.1f}s ({total_time/60:.1f} min)")
         print(f"   Output dir: {os.path.join(RQ2_OUTPUT_DIR, log_name)}")
 
         ours = rq2_result['cv_results'].get('Ours', {})
         if not ours.get('skipped', False):
-            print(f"\n   ðŸ“Š KEY RESULTS:")
-            print(f"   Ours (k={ours['k']}): AUROC = {ours['mean_auroc']:.4f} Â± {ours['std_auroc']:.4f}")
+            print(f"\n   📊 KEY RESULTS:")
+            print(f"   Ours (k={ours['k']}): AUROC = {ours['mean_auroc']:.4f} ± {ours['std_auroc']:.4f}")
 
             # Direction sub-sets
             for sub in ['Ours_Positive', 'Ours_Negative']:
                 sub_res = rq2_result['cv_results'].get(sub, {})
                 if not sub_res.get('skipped', False):
                     print(f"   {sub} (k={sub_res['k']}): AUROC = "
-                          f"{sub_res['mean_auroc']:.4f} Â± {sub_res['std_auroc']:.4f}")
+                          f"{sub_res['mean_auroc']:.4f} ± {sub_res['std_auroc']:.4f}")
 
             rb = rq2_result.get('random_baseline', {})
             if not rb.get('skipped', True):
                 delta = ours['mean_auroc'] - rb['grand_mean']
-                print(f"   Random-k (k={rb['k']}): AUROC = {rb['grand_mean']:.4f} Â± "
-                      f"{rb['grand_std']:.4f}  (Î” = {delta:+.4f})")
+                print(f"   Random-k (k={rb['k']}): AUROC = {rb['grand_mean']:.4f} ± "
+                      f"{rb['grand_std']:.4f}  (Δ = {delta:+.4f})")
 
             st = rq2_result.get('stat_tests', {})
             if not st.get('skipped', True):
                 n_sig = sum(1 for t in st['tests'] if t.get('rejected', False))
                 print(f"   Wilcoxon: {n_sig}/{len(COMPETITOR_SETS)} competitors significantly "
-                      f"different (Holm-Bonferroni Î±=0.05)")
+                      f"different (Holm-Bonferroni α=0.05)")
 
             # Direction consistency
             da = rq2_result.get('direction_analysis', {})
             cons = da.get('consistency', {})
             if cons.get('n_lr_folds', 0) > 0:
-                print(f"   Direction consistency: {cons['mean_consistency']:.3f} Â± "
+                print(f"   Direction consistency: {cons['mean_consistency']:.3f} ± "
                       f"{cons['std_consistency']:.3f} (across {cons['n_lr_folds']} LR folds)")
 
             # Complementarity
             comp_d = da.get('ablation', {}).get('complementarity_delta')
             if comp_d is not None:
-                print(f"   Complementarity Î”: {comp_d:+.4f} "
-                      f"({'âœ“ both directions help' if comp_d > 0 else 'âš ï¸ no complementarity'})")
+                print(f"   Complementarity Δ: {comp_d:+.4f} "
+                      f"({'✓ both directions help' if comp_d > 0 else '⚠️ no complementarity'})")
 
     print(f"\n{'='*100}")
 
 
 if __name__ == "__main__":
+    import argparse
+    parser = argparse.ArgumentParser(description="RQ2 — Discriminative Signal Evaluation")
+    parser.add_argument(
+        '--n-jobs', type=int, default=N_JOBS,
+        help=f'Number of parallel workers for Step 5 random-k baseline (-1 = all cores, default: {N_JOBS})'
+    )
+    args = parser.parse_args()
+    N_JOBS = args.n_jobs
     main()

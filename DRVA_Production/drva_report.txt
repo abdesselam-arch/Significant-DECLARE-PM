@@ -1,0 +1,308 @@
+========================================================================================================================
+DRVA — DECLARATIVE RULES VARIANT ANALYSIS  (Cecconi et al. 2021)
+Production: Deviant (re-submission required) vs. Regular (Normal)
+Shared M_all design: hierarchical pruning DISABLED
+========================================================================================================================
+Generated:  2026-05-21 11:23:17
+π=2,000  α=0.05  mmin=0.0  mdiff_min=0.0  hierarchical_pruning=False
+
+M_all:              1,657
+M_tested:           1,657  (= M_all at default params)
+Rejected (Cecconi): 47
+Rejected (Phipson): 47
+  Positive (Deviant-dominant): 13
+  Negative (Regular-dominant): 34
+
+========================================================================================================================
+TOP SIGNIFICANT RULES — ranked by Ediff descending
+========================================================================================================================
+
+Rank   1 | NotResponse_Turning - Machine 8_Final Inspection Q.C.
+         Type:   NotResponse
+         Acts:   Turning - Machine 8 → Final Inspection Q.C.
+         Dir:    Positive
+         Conf_A=1.0000  Conf_B=0.0000  Ediff=1.0000  p_Cecconi=2.5000e-03  p_Phipson=2.4988e-03  C(r)=5
+
+Rank   2 | NotChainSuccession_Laser Marking - Machine 7_Turning - Machine 8
+         Type:   NotChainSuccession
+         Acts:   Laser Marking - Machine 7 → Turning - Machine 8
+         Dir:    Negative
+         Conf_A=0.0000  Conf_B=1.0000  Ediff=1.0000  p_Cecconi=8.5000e-03  p_Phipson=8.4958e-03  C(r)=17
+
+Rank   3 | NotChainSuccession_Lapping - Machine 1_Turning Q.C.
+         Type:   NotChainSuccession
+         Acts:   Lapping - Machine 1 → Turning Q.C.
+         Dir:    Negative
+         Conf_A=0.0000  Conf_B=1.0000  Ediff=1.0000  p_Cecconi=1.5500e-02  p_Phipson=1.5492e-02  C(r)=31
+
+Rank   4 | NotResponse_Final Inspection Q.C._Turning - Machine 8
+         Type:   NotResponse
+         Acts:   Final Inspection Q.C. → Turning - Machine 8
+         Dir:    Negative
+         Conf_A=0.0000  Conf_B=1.0000  Ediff=1.0000  p_Cecconi=2.5000e-03  p_Phipson=2.4988e-03  C(r)=5
+
+Rank   5 | NotResponse_Laser Marking - Machine 7_Turning - Machine 8
+         Type:   NotResponse
+         Acts:   Laser Marking - Machine 7 → Turning - Machine 8
+         Dir:    Negative
+         Conf_A=0.0000  Conf_B=1.0000  Ediff=1.0000  p_Cecconi=8.5000e-03  p_Phipson=8.4958e-03  C(r)=17
+
+Rank   6 | NotChainSuccession_Flat Grinding - Machine 11_other
+         Type:   NotChainSuccession
+         Acts:   Flat Grinding - Machine 11 → other
+         Dir:    Negative
+         Conf_A=0.0000  Conf_B=0.8889  Ediff=0.8889  p_Cecconi=1.0000e-02  p_Phipson=9.9950e-03  C(r)=20
+
+Rank   7 | NotResponse_Final Inspection Q.C._Round Grinding - Machine 12
+         Type:   NotResponse
+         Acts:   Final Inspection Q.C. → Round Grinding - Machine 12
+         Dir:    Negative
+         Conf_A=0.0000  Conf_B=0.8333  Ediff=0.8333  p_Cecconi=3.3000e-02  p_Phipson=3.2984e-02  C(r)=66
+
+Rank   8 | NotChainSuccession_other_Flat Grinding - Machine 11
+         Type:   NotChainSuccession
+         Acts:   other → Flat Grinding - Machine 11
+         Dir:    Negative
+         Conf_A=0.0000  Conf_B=0.7778  Ediff=0.7778  p_Cecconi=1.8500e-02  p_Phipson=1.8491e-02  C(r)=37
+
+Rank   9 | NotChainSuccession_Turning & Milling - Machine 8_Flat Grinding - Machine 11
+         Type:   NotChainSuccession
+         Acts:   Turning & Milling - Machine 8 → Flat Grinding - Machine 11
+         Dir:    Negative
+         Conf_A=0.3333  Conf_B=1.0000  Ediff=0.6667  p_Cecconi=1.0000e-03  p_Phipson=9.9950e-04  C(r)=2
+
+Rank  10 | NotResponse_Packing_Turning & Milling - Machine 6
+         Type:   NotResponse
+         Acts:   Packing → Turning & Milling - Machine 6
+         Dir:    Negative
+         Conf_A=0.3333  Conf_B=1.0000  Ediff=0.6667  p_Cecconi=1.2500e-02  p_Phipson=1.2494e-02  C(r)=25
+
+Rank  11 | NotChainSuccession_Turning & Milling Q.C._Turning & Milling - Machine 4
+         Type:   NotChainSuccession
+         Acts:   Turning & Milling Q.C. → Turning & Milling - Machine 4
+         Dir:    Negative
+         Conf_A=0.0625  Conf_B=0.7143  Ediff=0.6518  p_Cecconi=1.5000e-03  p_Phipson=1.4993e-03  C(r)=3
+
+Rank  12 | NotResponse_Turning & Milling Q.C._Turning & Milling - Machine 4
+         Type:   NotResponse
+         Acts:   Turning & Milling Q.C. → Turning & Milling - Machine 4
+         Dir:    Negative
+         Conf_A=0.0625  Conf_B=0.7143  Ediff=0.6518  p_Cecconi=1.5000e-03  p_Phipson=1.4993e-03  C(r)=3
+
+Rank  13 | NotResponse_Laser Marking - Machine 7_Turning & Milling - Machine 6
+         Type:   NotResponse
+         Acts:   Laser Marking - Machine 7 → Turning & Milling - Machine 6
+         Dir:    Negative
+         Conf_A=0.4000  Conf_B=1.0000  Ediff=0.6000  p_Cecconi=1.4500e-02  p_Phipson=1.4493e-02  C(r)=29
+
+Rank  14 | NotResponse_Laser Marking - Machine 7_other
+         Type:   NotResponse
+         Acts:   Laser Marking - Machine 7 → other
+         Dir:    Negative
+         Conf_A=0.0000  Conf_B=0.6000  Ediff=0.6000  p_Cecconi=6.5000e-03  p_Phipson=6.4968e-03  C(r)=13
+
+Rank  15 | NotChainSuccession_Flat Grinding - Machine 11_Turning & Milling Q.C.
+         Type:   NotChainSuccession
+         Acts:   Flat Grinding - Machine 11 → Turning & Milling Q.C.
+         Dir:    Negative
+         Conf_A=0.4286  Conf_B=1.0000  Ediff=0.5714  p_Cecconi=5.0000e-04  p_Phipson=4.9975e-04  C(r)=1
+
+Rank  16 | NotResponse_Flat Grinding - Machine 11_Turning & Milling Q.C.
+         Type:   NotResponse
+         Acts:   Flat Grinding - Machine 11 → Turning & Milling Q.C.
+         Dir:    Negative
+         Conf_A=0.4286  Conf_B=1.0000  Ediff=0.5714  p_Cecconi=5.0000e-04  p_Phipson=4.9975e-04  C(r)=1
+
+Rank  17 | NotChainSuccession_Turning Q.C._Laser Marking - Machine 7
+         Type:   NotChainSuccession
+         Acts:   Turning Q.C. → Laser Marking - Machine 7
+         Dir:    Negative
+         Conf_A=0.0000  Conf_B=0.5385  Ediff=0.5385  p_Cecconi=3.1000e-02  p_Phipson=3.0985e-02  C(r)=62
+
+Rank  18 | NotResponse_Packing_Round Grinding - Manual
+         Type:   NotResponse
+         Acts:   Packing → Round Grinding - Manual
+         Dir:    Negative
+         Conf_A=0.4000  Conf_B=0.9167  Ediff=0.5167  p_Cecconi=1.2500e-02  p_Phipson=1.2494e-02  C(r)=25
+
+Rank  19 | NotChainSuccession_Turning Q.C._Final Inspection Q.C.
+         Type:   NotChainSuccession
+         Acts:   Turning Q.C. → Final Inspection Q.C.
+         Dir:    Negative
+         Conf_A=0.5000  Conf_B=1.0000  Ediff=0.5000  p_Cecconi=1.5000e-03  p_Phipson=1.4993e-03  C(r)=3
+
+Rank  20 | NotResponse_Turning Q.C._Final Inspection Q.C.
+         Type:   NotResponse
+         Acts:   Turning Q.C. → Final Inspection Q.C.
+         Dir:    Positive
+         Conf_A=0.5000  Conf_B=0.0000  Ediff=0.5000  p_Cecconi=5.0000e-04  p_Phipson=4.9975e-04  C(r)=1
+
+Rank  21 | Succession_Final Inspection Q.C._Turning Q.C.
+         Type:   Succession
+         Acts:   Final Inspection Q.C. → Turning Q.C.
+         Dir:    Positive
+         Conf_A=0.5000  Conf_B=0.0000  Ediff=0.5000  p_Cecconi=5.0000e-04  p_Phipson=4.9975e-04  C(r)=1
+
+Rank  22 | NotChainSuccession_Turning & Milling Q.C._other
+         Type:   NotChainSuccession
+         Acts:   Turning & Milling Q.C. → other
+         Dir:    Negative
+         Conf_A=0.5000  Conf_B=0.9444  Ediff=0.4444  p_Cecconi=4.0000e-03  p_Phipson=3.9980e-03  C(r)=8
+
+Rank  23 | NotChainSuccession_Final Inspection Q.C._Turning Q.C.
+         Type:   NotChainSuccession
+         Acts:   Final Inspection Q.C. → Turning Q.C.
+         Dir:    Negative
+         Conf_A=0.5000  Conf_B=0.9231  Ediff=0.4231  p_Cecconi=6.0000e-03  p_Phipson=5.9970e-03  C(r)=12
+
+Rank  24 | NotChainSuccession_other_Lapping - Machine 1
+         Type:   NotChainSuccession
+         Acts:   other → Lapping - Machine 1
+         Dir:    Negative
+         Conf_A=0.5000  Conf_B=0.8750  Ediff=0.3750  p_Cecconi=4.4000e-02  p_Phipson=4.3978e-02  C(r)=88
+
+Rank  25 | NotChainSuccession_Laser Marking - Machine 7_other
+         Type:   NotChainSuccession
+         Acts:   Laser Marking - Machine 7 → other
+         Dir:    Negative
+         Conf_A=0.5000  Conf_B=0.8500  Ediff=0.3500  p_Cecconi=3.7500e-02  p_Phipson=3.7481e-02  C(r)=75
+
+Rank  26 | NotChainSuccession_Laser Marking - Machine 7_Turning Q.C.
+         Type:   NotChainSuccession
+         Acts:   Laser Marking - Machine 7 → Turning Q.C.
+         Dir:    Negative
+         Conf_A=0.6667  Conf_B=1.0000  Ediff=0.3333  p_Cecconi=7.0000e-03  p_Phipson=6.9965e-03  C(r)=14
+
+Rank  27 | NotResponse_Laser Marking - Machine 7_Turning & Milling - Machine 5
+         Type:   NotResponse
+         Acts:   Laser Marking - Machine 7 → Turning & Milling - Machine 5
+         Dir:    Negative
+         Conf_A=0.6667  Conf_B=1.0000  Ediff=0.3333  p_Cecconi=2.4000e-02  p_Phipson=2.3988e-02  C(r)=48
+
+Rank  28 | NotChainSuccession_Packing_other
+         Type:   NotChainSuccession
+         Acts:   Packing → other
+         Dir:    Negative
+         Conf_A=0.6667  Conf_B=0.9500  Ediff=0.2833  p_Cecconi=8.0000e-03  p_Phipson=7.9960e-03  C(r)=16
+
+Rank  29 | NotResponse_Laser Marking - Machine 7_Turning & Milling Q.C.
+         Type:   NotResponse
+         Acts:   Laser Marking - Machine 7 → Turning & Milling Q.C.
+         Dir:    Negative
+         Conf_A=0.6800  Conf_B=0.9608  Ediff=0.2808  p_Cecconi=5.0000e-04  p_Phipson=4.9975e-04  C(r)=1
+
+Rank  30 | End_Packing
+         Type:   End
+         Act:    Packing
+         Dir:    Negative
+         Conf_A=0.0769  Conf_B=0.3204  Ediff=0.2435  p_Cecconi=5.0000e-04  p_Phipson=4.9975e-04  C(r)=1
+
+Rank  31 | End_Final Inspection Q.C.
+         Type:   End
+         Act:    Final Inspection Q.C.
+         Dir:    Negative
+         Conf_A=0.1111  Conf_B=0.3495  Ediff=0.2384  p_Cecconi=5.0000e-04  p_Phipson=4.9975e-04  C(r)=1
+
+Rank  32 | NotResponse_Final Inspection Q.C._Lapping - Machine 1
+         Type:   NotResponse
+         Acts:   Final Inspection Q.C. → Lapping - Machine 1
+         Dir:    Negative
+         Conf_A=0.7500  Conf_B=0.9286  Ediff=0.1786  p_Cecconi=3.5500e-02  p_Phipson=3.5482e-02  C(r)=71
+
+Rank  33 | ChainResponse_other_Turning & Milling - Machine 10
+         Type:   ChainResponse
+         Acts:   other → Turning & Milling - Machine 10
+         Dir:    Positive
+         Conf_A=0.1667  Conf_B=0.0000  Ediff=0.1667  p_Cecconi=3.5000e-03  p_Phipson=3.4983e-03  C(r)=7
+
+Rank  34 | NotResponse_Turning & Milling Q.C._Flat Grinding - Machine 11
+         Type:   NotResponse
+         Acts:   Turning & Milling Q.C. → Flat Grinding - Machine 11
+         Dir:    Positive
+         Conf_A=0.1429  Conf_B=0.0000  Ediff=0.1429  p_Cecconi=6.5000e-03  p_Phipson=6.4968e-03  C(r)=13
+
+Rank  35 | NotChainSuccession_Turning & Milling - Machine 4_Turning & Milling Q.C.
+         Type:   NotChainSuccession
+         Acts:   Turning & Milling - Machine 4 → Turning & Milling Q.C.
+         Dir:    Negative
+         Conf_A=0.0000  Conf_B=0.1429  Ediff=0.1429  p_Cecconi=2.3000e-02  p_Phipson=2.2989e-02  C(r)=46
+
+Rank  36 | NotChainSuccession_Turning & Milling Q.C._Final Inspection Q.C.
+         Type:   NotChainSuccession
+         Acts:   Turning & Milling Q.C. → Final Inspection Q.C.
+         Dir:    Negative
+         Conf_A=0.8667  Conf_B=0.9778  Ediff=0.1111  p_Cecconi=3.4000e-02  p_Phipson=3.3983e-02  C(r)=68
+
+Rank  37 | Init_Turning & Milling - Machine 4
+         Type:   Init
+         Act:    Turning & Milling - Machine 4
+         Dir:    Positive
+         Conf_A=0.1709  Conf_B=0.0680  Ediff=0.1030  p_Cecconi=2.3500e-02  p_Phipson=2.3488e-02  C(r)=47
+
+Rank  38 | End_Turning & Milling - Machine 5
+         Type:   End
+         Act:    Turning & Milling - Machine 5
+         Dir:    Positive
+         Conf_A=0.1111  Conf_B=0.0097  Ediff=0.1014  p_Cecconi=3.0000e-03  p_Phipson=2.9985e-03  C(r)=6
+
+Rank  39 | End_Turning & Milling - Machine 6
+         Type:   End
+         Act:    Turning & Milling - Machine 6
+         Dir:    Positive
+         Conf_A=0.1197  Conf_B=0.0194  Ediff=0.1002  p_Cecconi=7.5000e-03  p_Phipson=7.4963e-03  C(r)=15
+
+Rank  40 | NotChainSuccession_Turning & Milling - Machine 8_Turning & Milling Q.C.
+         Type:   NotChainSuccession
+         Acts:   Turning & Milling - Machine 8 → Turning & Milling Q.C.
+         Dir:    Positive
+         Conf_A=0.1000  Conf_B=0.0000  Ediff=0.1000  p_Cecconi=4.0500e-02  p_Phipson=4.0480e-02  C(r)=81
+
+Rank  41 | NotChainSuccession_Lapping - Machine 1_Turning & Milling Q.C.
+         Type:   NotChainSuccession
+         Acts:   Lapping - Machine 1 → Turning & Milling Q.C.
+         Dir:    Negative
+         Conf_A=0.9000  Conf_B=1.0000  Ediff=0.1000  p_Cecconi=1.0000e-03  p_Phipson=9.9950e-04  C(r)=2
+
+Rank  42 | End_Turning & Milling - Machine 4
+         Type:   End
+         Act:    Turning & Milling - Machine 4
+         Dir:    Positive
+         Conf_A=0.1282  Conf_B=0.0388  Ediff=0.0894  p_Cecconi=2.4500e-02  p_Phipson=2.4488e-02  C(r)=49
+
+Rank  43 | NotChainSuccession_Packing_Lapping - Machine 1
+         Type:   NotChainSuccession
+         Acts:   Packing → Lapping - Machine 1
+         Dir:    Negative
+         Conf_A=0.9231  Conf_B=1.0000  Ediff=0.0769  p_Cecconi=5.0000e-04  p_Phipson=4.9975e-04  C(r)=1
+
+Rank  44 | Init_Turning & Milling - Machine 9
+         Type:   Init
+         Act:    Turning & Milling - Machine 9
+         Dir:    Positive
+         Conf_A=0.1026  Conf_B=0.0291  Ediff=0.0734  p_Cecconi=3.9000e-02  p_Phipson=3.8981e-02  C(r)=78
+
+Rank  45 | Init_Lapping - Machine 1
+         Type:   Init
+         Act:    Lapping - Machine 1
+         Dir:    Positive
+         Conf_A=0.0598  Conf_B=0.0000  Ediff=0.0598  p_Cecconi=1.9000e-02  p_Phipson=1.8991e-02  C(r)=38
+
+Rank  46 | Init_Packing
+         Type:   Init
+         Act:    Packing
+         Dir:    Negative
+         Conf_A=0.0085  Conf_B=0.0680  Ediff=0.0594  p_Cecconi=2.5000e-02  p_Phipson=2.4988e-02  C(r)=50
+
+Rank  47 | ChainResponse_Laser Marking - Machine 7_Turning - Machine 8
+         Type:   ChainResponse
+         Acts:   Laser Marking - Machine 7 → Turning - Machine 8
+         Dir:    Positive
+         Conf_A=0.0345  Conf_B=0.0000  Ediff=0.0345  p_Cecconi=5.0000e-04  p_Phipson=4.9975e-04  C(r)=1
+
+========================================================================================================================
+TIMING
+========================================================================================================================
+  encoding                 : 0.6s
+  pruning                  : 0.0s
+  permutation_test         : 3.3s
+  total                    : 4.1s

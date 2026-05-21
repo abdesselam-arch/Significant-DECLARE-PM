@@ -892,7 +892,8 @@ def apply_P1_activity_label_noise(
         # )
         perturbed[cid] = CaseInfo(
             case_id=cid, outcome=case.outcome, trace=trace,
-            application_type=case.application_type, loan_goal=case.loan_goal,
+            application_type=case.application_type, 
+            loan_goal=case.loan_goal,
             start_timestamp=case.start_timestamp,
             activity_index=activity_index,
         )
@@ -933,7 +934,8 @@ def apply_P2_class_label_noise(
         new_outcome = 1 - case.outcome if cid in flip_ids else case.outcome
         perturbed[cid] = CaseInfo(
             case_id=cid, outcome=new_outcome, trace=case.trace.copy(),
-            org_group=case.org_group, age_bracket=case.age_bracket,
+            application_type=case.application_type, 
+            loan_goal=case.loan_goal,
             start_timestamp=case.start_timestamp,
             activity_index=case.activity_index.copy(),
         )
@@ -989,7 +991,8 @@ def apply_P3_trace_truncation(
         activity_index = precompute_activity_index(new_trace, case_id=cid)
         perturbed[cid] = CaseInfo(
             case_id=cid, outcome=case.outcome, trace=new_trace,
-            org_group=case.org_group, age_bracket=case.age_bracket,
+            application_type=case.application_type, 
+            loan_goal=case.loan_goal,
             start_timestamp=case.start_timestamp,
             activity_index=activity_index,
         )

@@ -1,0 +1,56 @@
+{
+  "rq1_version": "1.0",
+  "method": "DRVA",
+  "log_name": "Sepsis",
+  "timestamp": "2026-05-20T22:30:34.553323",
+  "experiment_design": {
+    "method": "DRVA — Cecconi et al. BPM Forum 2021",
+    "shared_pool": "M_all from Phase 0 DECLARE spec",
+    "null_protocol": "Double-null: σ_label (permute class labels) ∘ σ_trace (shuffle activities within each trace). Under the double-null every rejection is a false positive.",
+    "DRVA_gate": "Per-rule p_Cecconi ≤ 0.05 (no FDR correction)",
+    "DRVA_structural_note": "shuffleLog nullifies H₀ᵈ only. H₀ˢ (within-trace ordering) is never nullified → FDR_emp > α expected under doubly-null."
+  },
+  "config": {
+    "B_NULL": 200,
+    "PI_DRVA_FULL": 2000,
+    "PI_DRVA_VALID": 200,
+    "ALPHA_DRVA": 0.05,
+    "BASE_SEED": 20260521,
+    "N_JOBS": -1,
+    "m_total": 437
+  },
+  "R_obs": 56,
+  "fdr_metrics": {
+    "R_obs": 56,
+    "E_V_b": 14.39,
+    "FDR_emp": 0.2569642857142857,
+    "PCER_emp": 0.032929061784897025,
+    "FWER_emp": 1.0,
+    "FDR_CI_lower": 0.24500035513272578,
+    "FDR_CI_upper": 0.27215798643646677,
+    "B_null": 200,
+    "m_total": 437,
+    "alpha": 0.05,
+    "controls_FDR": false
+  },
+  "null_replicate_summary": {
+    "mean_V_b": 14.39,
+    "std_V_b": 5.286577342666993,
+    "max_V_b": 29,
+    "n_zero_V_b": 0
+  },
+  "timing": {
+    "original_drva_seconds": 6.977821111679077,
+    "null_permutations_seconds": 76.68173336982727,
+    "total_seconds": 83.65955448150635
+  },
+  "validation_checks": {
+    "marginals_preserved": true,
+    "seed_layers": {
+      "held_out_label": "BASE_SEED + b",
+      "trace_shuffle": "BASE_SEED + b + 200_000",
+      "DRVA_internal": "BASE_SEED + b + 50_000",
+      "no_overlap": "B_NULL=200 < 100_000"
+    }
+  }
+}

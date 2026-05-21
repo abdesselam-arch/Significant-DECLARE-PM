@@ -1,0 +1,88 @@
+{
+  "rq1_version": "1.0",
+  "method": "FST",
+  "log_name": "Sepsis",
+  "timestamp": "2026-05-19T00:17:20.605356",
+  "experiment_design": {
+    "method": "FST",
+    "shared_pool": "M_all from Phase 0 DECLARE spec (fixed; same as P1 and DRVA)",
+    "null_protocol": "Double-null: σ_label (permute class labels) ∘ σ_trace (shuffle activities within each trace). Under the double-null, every rejection is a false positive.",
+    "FST_gate": "F(c) >= τ_F*=0.000259. τ_F* = F(c_(k)), k=K_P1_REJECTIONS=248. No statistical test. No FDR correction.",
+    "why_FDR_uncontrolled": "Under the double-null, F_null(c) ~ chi2(1)/n_app (approximately). For fixed τ_F* > 0, some constraints exceed the threshold purely by chance. No Adaptive Storey π̂₀ correction and no doubly-null calibration of the null distribution per constraint: FDR_emp = E[V_b]/R_obs is uncontrolled.",
+    "null_rep_budget": "Zero internal permutation iterations per replicate. FST is deterministic: holds_null → F_null^(b)(c) → V_b."
+  },
+  "config": {
+    "B_NULL": 200,
+    "ALPHA": 0.05,
+    "BASE_SEED": 20260521,
+    "N_JOBS": -1,
+    "k_requested": 248,
+    "k_effective": 217,
+    "n_positive_f": 217,
+    "gap_k_vs_kp": 31,
+    "tau_f_star": 0.0002587514360606581,
+    "tau_f_minimum": 1e-09,
+    "fisher_eps": 1e-10,
+    "m_total": 437
+  },
+  "R_obs": {
+    "FST": 217
+  },
+  "empirical_fdr_table": [
+    {
+      "method": "FST",
+      "R_obs": 217,
+      "E_V_b": 342.63,
+      "FDR_emp": 1.5789400921658987,
+      "PCER_emp": 0.7840503432494279,
+      "FWER_emp": 1.0,
+      "FDR_CI_lower": 1.5740993002114803,
+      "FDR_CI_upper": 1.5838248847926268,
+      "B_null": 200,
+      "m_total": 437,
+      "alpha": 0.05,
+      "controls_FDR": false
+    }
+  ],
+  "null_replicate_summary": {
+    "FST": {
+      "mean_V_b": 342.63,
+      "std_V_b": 7.723541933594975,
+      "max_V_b": 362,
+      "n_zero_V_b": 0
+    }
+  },
+  "diagnostics": {
+    "m_total": 437,
+    "k": 217,
+    "k_requested": 248,
+    "k_effective": 217,
+    "n_positive_f": 217,
+    "tau_f_star": 0.0002587514360606581,
+    "fisher_mean": 686498880.1661532,
+    "fisher_median": 0.0,
+    "fisher_max": 10000000000.0,
+    "fisher_n_zero": 220,
+    "f_accepted_mean": 1382488528.2608705,
+    "f_accepted_min": 0.0002587514360606581,
+    "f_accepted_max": 10000000000.0,
+    "dc_accepted_mean": 0.19879478825182767,
+    "dc_accepted_min": 0.00021170610211707075,
+    "dc_accepted_max": 1.0
+  },
+  "timing": {
+    "original_FST_seconds": 2.2314703464508057,
+    "null_permutations_seconds": 65.99093699455261,
+    "total_seconds": 68.22240734100342
+  },
+  "validation_checks": {
+    "marginals_preserved": true,
+    "deterministic_per_rep": true,
+    "seed_layers": {
+      "held_out_label": "BASE_SEED + b",
+      "replicate_rs": "BASE_SEED + 100_000 + b",
+      "trace_shuffle": "BASE_SEED + 100_000 + b + 200_000",
+      "no_overlap": "B_NULL=200 < 100_000"
+    }
+  }
+}

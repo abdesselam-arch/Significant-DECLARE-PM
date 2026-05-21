@@ -5,34 +5,46 @@ Full Evaluation Pipeline: Steps 1–6  (RTFMP)
 
 STEP 1: Retrieve holds_all from Phase 1 output — reuse if in-memory or
         cached to disk; recompute only as last resort.
-        CRITICAL: lifecycle filter (COMPLETE only) and outcome signal
-        ('Send for Credit Collection') are stripped from traces before
-        any pattern evaluation, matching Phase 1 preprocessing.
-STEP 2: Build binary feature matrices X ∈ {0,1}^{n×k} for 8 pattern sets.
+        CRITICAL: outcome signal ('Send for Credit Collection') is stripped
+        from traces before any pattern evaluation, matching Phase 1 preprocessing.
+STEP 2: Build binary feature matrices X ∈ {0,1}^{n×k} for 9 pattern sets.
 STEP 3: 5-times repeated stratified 5-fold nested CV (25 outer folds).
          Inner loop: 5-fold grid search over LR-L1 and RF.
 STEP 4: Wilcoxon signed-rank test on 25 paired AUROC differences,
-         Holm-Bonferroni correction across 7 competitors.
+         Holm-Bonferroni correction across 8 competitors.
 STEP 5: Random-k baseline (30 random samples of k patterns, same CV).
 STEP 6: Direction-aware post-hoc analysis:
          6a. Direction-stratified ablation (Ours_Positive, Ours_Negative)
          6b. Learned-direction consistency (LR β-sign vs Phase 1 direction)
          6c. Direction-weighted RF feature importance (MDI by direction)
 
-PATTERN SETS (from Phase 1 four-category verdict taxonomy):
-    Ours             — significance_category == "Both" (dual Storey FDR, IUT)
-    Ours_Positive    — significance_category == "Both" AND direction == "Positive"
-    Ours_Negative    — significance_category == "Both" AND direction == "Negative"
-    Discriminative   — significance_category == "Discriminative only"
+PATTERN SETS (from Phase 1 v9.0 single-gate Hou-Storey architecture):
+    PRIMARY SET:
+    Ours             — is_significant_final == True
+                       = "Both" ∪ "Discriminative only" (Hou-Storey q_Hou ≤ α)
+                       Hou (2005) weighted T_Hou = -2[w_s ln p_s + w_d ln p_d],
+                       w_d = B_label / (B_label + B2_test) = 1500/2500 = 0.60,
+                       w_s = B2_test / (B_label + B2_test) = 1000/2500 = 0.40.
+                       Gao (2023) adaptive Storey π̂₀, doubly-null calibrated.
+
+    P1 TAXONOMY SUB-CATEGORIES (ablation competitors):
+    Ours_Both        — significance_category == "Both"
+                       (q_Hou ≤ α AND p_struct_dom ≤ α nominal)
+    Ours_Disc_Only   — significance_category == "Discriminative only"
+                       (q_Hou ≤ α AND p_struct_dom > α)
+    Ours_Positive    — is_significant_final AND direction == "Positive"
+    Ours_Negative    — is_significant_final AND direction == "Negative"
+
+    EXTERNAL BASELINES:
     Structural       — significance_category == "Structural only"
-    BH-FDR           — is_significant_bh == True
+    BH               — is_significant_bh == True (BH on analytic Hou p-value)
     Union            — is_significant_discriminative OR is_significant_structural
     All              — holds_all.keys()
 
 STATISTICAL TESTING:
-    Per log, for each of 7 competitors vs "Ours":
+    Per log, for each of 8 competitors vs "Ours":
         Wilcoxon signed-rank test on 25 paired AUROC differences
-        Holm-Bonferroni correction across 7 tests
+        Holm-Bonferroni correction across 8 tests
         Rank-biserial r as effect size
 
 RANDOM-k BASELINE:
@@ -47,7 +59,7 @@ DIRECTION-AWARE ANALYSIS (Step 6):
     6c. Importance: For RF outer folds, compute MDI per feature, stratified
         by Positive/Negative direction.
 
-Version: 3.0-RTFMP-DIRECTION-AWARE
+Version: 4.0-RTFMP-P1-ALIGNED
 Author: Ahmed Nour Abdesselam
 Institution: Free University of Bozen-Bolzano
 Date: March 2026
@@ -66,8 +78,10 @@ References:
 - Tibshirani (1996). LASSO. JRSS-B 58(1):267-288.
 - Breiman (2001). Random Forests. Machine Learning 45(1):5-32.
 - Storey (2002). A direct approach to FDR. JRSS-B 64(3):479-498.
-- Berger (1982). Multiparameter Hypothesis Testing. Technometrics.
-- van Dongen (2012). BPI Challenge 2012 — Road Traffic Fine Management Process. 4TU.ResearchData.
+- Hou (2005). A simple approximation for the distribution of the weighted combination of non-independent or independent chi-squares. Stat. Prob. Lett. 73:179-187.
+- Gao (2023). Adaptive Storey π̂₀ estimator. arXiv:2310.06357.
+- Berger (1982). Multiparameter Hypothesis Testing. Technometrics. [IUT — superseded in P1 v9.0 by Hou 2005 combination]
+- de Leoni & Mannhardt (2015). Road Traffic Fine Management Process Event Log. 4TU.ResearchData.
 """
 
 import os
@@ -103,6 +117,7 @@ from matplotlib.gridspec import GridSpec
 import seaborn as sns
 
 from tqdm import tqdm
+from joblib import Parallel, delayed
 
 warnings.filterwarnings('ignore')
 
@@ -144,9 +159,10 @@ COLORS = {
 
 SET_COLORS = {
     'Ours':            COLORS['ours'],
+    'Ours_Both':       COLORS['discriminative'],   # "Both" sub-category — forest green
+    'Ours_Disc_Only':  COLORS['accent'],           # "Discriminative only" sub-category
     'Ours_Positive':   COLORS['ours_pos'],
     'Ours_Negative':   COLORS['ours_neg'],
-    'Discriminative':  COLORS['discriminative'],
     'Structural':      COLORS['structural'],
     'BH':              COLORS['bh'],
     'Union':           COLORS['union'],
@@ -163,21 +179,17 @@ BASE_SEED = 42  # Master seed — all random states derived from this
 # ── Log configuration ────────────────────────────────────────────────────────
 # outcome_mode='activity_present': class 1 iff outcome_signal ∈ trace activities.
 # outcome_strip_from_trace: if True, strip outcome_signal from trace BEFORE
-#   pattern evaluation. CRITICAL for RTFMP: Phase 1 strips 'Send for Credit
-#   Collection' from traces to prevent trivially dominant patterns; RQ2 must match.
-# lifecycle_col / lifecycle_value: RTFMP records START and COMPLETE events for
-#   each activity; only COMPLETE events are retained (matching Phase 1 filter).
+#   pattern evaluation. CRITICAL for RTFMP: Phase 1 strips 'Send for Credit Collection'
+#   from traces to prevent trivially dominant patterns; RQ2 must match.
 LOG_CONFIGS = {
     'RTFMP': {
         'csv': 'Road_Traffic_Fine_Management_Process.csv',
         'declare_spec': 'phase0_RTFMP.json',
-        'phase1_dir': 'RTFMP_ThreeHyp_SAM',
-        'phase1_json': 'RTFMP_ThreeHyp_SAM/three_hypothesis_samfdr_results.json',
+        'phase1_dir': 'RTFMP_Results',
+        'phase1_json': 'RTFMP_Results/three_hypothesis_houfdr_results.json',
         'outcome_signal': 'Send for Credit Collection',
         'outcome_mode': 'activity_present',
         'outcome_strip_from_trace': True,   # CRITICAL: match Phase 1 preprocessing
-        'lifecycle_col': 'lifecycle:transition',
-        'lifecycle_value': 'complete',      # retain COMPLETE events only
         'case_col': 'case:concept:name',
         'act_col': 'concept:name',
         'ts_col': 'time:timestamp',
@@ -185,15 +197,15 @@ LOG_CONFIGS = {
 }
 
 # RQ2 output directory
-RQ2_OUTPUT_DIR = 'RQ2_RTFMP'
+RQ2_OUTPUT_DIR = 'RQ2_RTFMP_Parallel'
 
 # LOG_CONFIGS = {
-#     'Sepsis': {
-#         'csv': '../Phase 1 - KM Catalog Construction/Experiments data/CSV/Sepsis_EL.csv',
-#         'declare_spec': '../Phase 1 - KM Catalog Construction/Experiments data/Experiments/Results/DECspec_Sepsis/phase0_declare_specification_CC.json',
-#         'phase1_dir': '../Phase 1 - KM Catalog Construction/Experiments data/Experiments/Results/Sepsis_ThreeHyp_SAM2',
-#         'phase1_json': '../Phase 1 - KM Catalog Construction/Experiments data/Experiments/Results/Sepsis_ThreeHyp_SAM2/three_hypothesis_samfdr_results.json',
-#         'outcome_signal': 'Return ER',
+#     'RTFMP': {
+#         'csv': '../Phase 1 - KM Catalog Construction/Experiments data/CSV/Road_Traffic_Fine_Management_Process.csv',
+#         'declare_spec': '../Phase 1 - KM Catalog Construction/Experiments data/Experiments/Results/DECspec_RTFMP/phase0_RTFMP.json',
+#         'phase1_dir': '../Phase 1 - KM Catalog Construction/Experiments data/Experiments/Results/RTFMP_Results',
+#         'phase1_json': '../Phase 1 - KM Catalog Construction/Experiments data/Experiments/Results/RTFMP_Results/three_hypothesis_houfdr_results.json',
+#         'outcome_signal': 'Send for Credit Collection',
 #         'outcome_mode': 'activity_present',
 #         'outcome_strip_from_trace': True,   # CRITICAL: match Phase 1 preprocessing
 #         'case_col': 'case:concept:name',
@@ -203,7 +215,7 @@ RQ2_OUTPUT_DIR = 'RQ2_RTFMP'
 # }
 
 # # RQ2 output directory
-# RQ2_OUTPUT_DIR = '../Experiments data/Experiments/Results/RQ2_Sepsis'
+# RQ2_OUTPUT_DIR = '../Experiments data/Experiments/Results/RQ2_RTFMP'
 
 # ── CV configuration (fixed across all logs and pattern sets) ─────────────
 N_OUTER_SPLITS  = 5
@@ -217,6 +229,7 @@ RF_N_ESTIMATORS = 500
 
 # ── Random-k baseline ────────────────────────────────────────────────────
 N_RANDOM_SAMPLES = 30   # Number of random pattern samples
+N_JOBS = -1             # Outer parallelism for Step 5 (-1 = all cores, set via --n-jobs)
 
 # ── Feature encoding ─────────────────────────────────────────────────────
 MIN_FEATURES = 3        # k < 3 → skip
@@ -226,14 +239,19 @@ RUN_TERNARY_SENSITIVITY = True
 
 # ── Required Phase 1 JSON keys (for schema validation) ──────────────────
 REQUIRED_PHASE1_KEYS = {
-    'significance_category',
-    'is_significant_bh',
-    'is_significant_structural',
-    'is_significant_discriminative',
     'constraint_type',
     'activity_a',
-    'direction',          # DIRECTION-AWARE: required for directional analysis
+    'direction',
+    'storey_fdr',   # sub-object
+    'bh_fdr',       # sub-object
 }
+REQUIRED_STOREY_KEYS = {
+    'significance_category',
+    'is_significant_structural',
+    'is_significant_discriminative',
+    'is_significant_final',
+}
+REQUIRED_BH_KEYS = {'is_significant'}
 
 
 # ============================================================================
@@ -249,6 +267,10 @@ BINARY_NEGATIVE_CONSTRAINTS = ['NotResponse', 'NotChainSuccession']
 ALL_CONSTRAINT_TYPES = (
     UNARY_CONSTRAINTS + BINARY_POSITIVE_CONSTRAINTS + BINARY_NEGATIVE_CONSTRAINTS
 )
+# NOTE: Precedence family and NotChainResponse/NotSuccession are supported in
+# evaluate_pattern_fast dispatch (identical to p1_RTFMP_hou.py) but are NOT
+# listed in ALL_CONSTRAINT_TYPES — p1_RTFMP_hou.py generates candidates from
+# the 10 types above only. The dispatch handles them if they appear in Phase 0 spec.
 
 
 def precompute_activity_index(trace, case_id=None):
@@ -340,6 +362,62 @@ def check_NotChainSuccession_trace(idx, trace, x, y, **kw):
         if yp_val > 0 and trace[yp_val - 1] == x: return 0
     return 1
 
+# ── Precedence-family and Not-Precedence checkers (identical to p1_RTFMP_hou.py)
+#    These are in the evaluate_pattern_fast dispatch but not in ALL_CONSTRAINT_TYPES.
+#    Defined here for full dispatch coverage across all DECLARE log types. ──
+
+def check_Precedence_trace(idx, trace, x, y, **kw):
+    if y not in idx: return None
+    xp = set(idx.get(x, []))
+    for yp in idx[y]:
+        if not any(j < yp for j in xp): return 0
+    return 1
+
+def check_AlternatePrecedence_trace(idx, trace, x, y, **kw):
+    if y not in idx: return None
+    xpos = sorted(idx.get(x, []))
+    ypos = sorted(idx[y])
+    for i, yp in enumerate(ypos):
+        if i == 0: continue
+        lower = ypos[i - 1] + 1
+        if not any(lower <= j < yp for j in xpos): return 0
+    return 1
+
+def check_ChainPrecedence_trace(idx, trace, x, y, **kw):
+    if y not in idx: return None
+    for yp in idx[y]:
+        if not (yp > 0 and trace[yp - 1] == x): return 0
+    return 1
+
+def check_NotChainResponse_trace(idx, trace, x, y, **kw):
+    if x not in idx or y not in idx: return None
+    for xp in idx[x]:
+        if xp + 1 < len(trace) and trace[xp + 1] == y: return 0
+    return 1
+
+def check_NotSuccession_trace(idx, trace, x, y, **kw):
+    if x not in idx or y not in idx: return None
+    yp = set(idx.get(y, []))
+    for xp in idx[x]:
+        if any(j > xp for j in yp): return 0
+    xp_set = set(idx.get(x, []))
+    for yp_val in idx[y]:
+        if any(j < yp_val for j in xp_set): return 0
+    return 1
+
+def check_NotPrecedence_trace(idx, trace, x, y, **kw):
+    if y not in idx: return None
+    xp = set(idx.get(x, []))
+    for yp in idx[y]:
+        if any(j < yp for j in xp): return 0
+    return 1
+
+def check_NotChainPrecedence_trace(idx, trace, x, y, **kw):
+    if x not in idx or y not in idx: return None
+    for yp in idx[y]:
+        if yp > 0 and trace[yp - 1] == x: return 0
+    return 1
+
 
 def evaluate_pattern_fast(constraint_type, activity_a, activity_b, trace, activity_index, **kw):
     dispatch = {
@@ -348,10 +426,15 @@ def evaluate_pattern_fast(constraint_type, activity_a, activity_b, trace, activi
         'Response': lambda: check_Response_trace(activity_index, trace, activity_a, activity_b),
         'AlternateResponse': lambda: check_AlternateResponse_trace(activity_index, trace, activity_a, activity_b),
         'ChainResponse': lambda: check_ChainResponse_trace(activity_index, trace, activity_a, activity_b),
+        'Precedence': lambda: check_Precedence_trace(activity_index, trace, activity_a, activity_b),
+        'AlternatePrecedence': lambda: check_AlternatePrecedence_trace(activity_index, trace, activity_a, activity_b),
+        'ChainPrecedence': lambda: check_ChainPrecedence_trace(activity_index, trace, activity_a, activity_b),
         'Succession': lambda: check_Succession_trace(activity_index, trace, activity_a, activity_b),
         'AlternateSuccession': lambda: check_AlternateSuccession_trace(activity_index, trace, activity_a, activity_b),
         'ChainSuccession': lambda: check_ChainSuccession_trace(activity_index, trace, activity_a, activity_b),
         'NotResponse': lambda: check_NotResponse_trace(activity_index, trace, activity_a, activity_b),
+        'NotChainResponse': lambda: check_NotChainResponse_trace(activity_index, trace, activity_a, activity_b),
+        'NotSuccession': lambda: check_NotSuccession_trace(activity_index, trace, activity_a, activity_b),
         'NotChainSuccession': lambda: check_NotChainSuccession_trace(activity_index, trace, activity_a, activity_b),
     }
     fn = dispatch.get(constraint_type)
@@ -369,7 +452,16 @@ def evaluate_pattern_fast(constraint_type, activity_a, activity_b, trace, activi
 
 @dataclass
 class CaseInfo:
-    """Minimal case structure for RQ2."""
+    """
+    Minimal case structure for RQ2.
+
+    IMPORTANT — `trace` excludes the outcome signal activity. Retaining it
+    would produce trivially dominant DECLARE constraints (e.g. Init/End/Response
+    involving 'Send for Credit Collection' at 100% in Class 1 and 0% in Class 0)
+    that encode the label rather than genuine process behaviour. This matches P1's
+    load_and_preprocess_data() which strips the outcome signal before any
+    pattern evaluation (see outcome_strip_from_trace in LOG_CONFIGS).
+    """
     case_id: str
     outcome: int
     trace: List[str]
@@ -388,20 +480,16 @@ def load_event_log(
     """
     Load event log and extract case information.
 
-    CRITICAL FOR RTFMP: Two preprocessing steps must exactly match Phase 1
-    (p1_RTFMP.py) to ensure holds_all consistency:
+    CRITICAL FOR RTFMP: When outcome_strip_from_trace is True, the outcome
+    signal activity is stripped from traces AFTER labelling but BEFORE pattern
+    evaluation. This matches Phase 1 (p1_RTFMP_hou.py) preprocessing exactly:
 
-    1. Lifecycle filter: RTFMP records START and COMPLETE events for each
-       activity. Only COMPLETE events are retained:
-           Phase 1:  df[df['lifecycle:transition'].str.lower() == 'complete']
-           RQ2:      same filter applied here via lifecycle_col/lifecycle_value
+        Phase 1:  trace = [a for a in all_activities if a != TARGET_ACTIVITY]
+        RQ2:      trace = [a for a in raw_trace if a != outcome_signal]
 
-    2. Outcome-signal stripping: 'Send for Credit Collection' is removed from
-       traces AFTER labelling but BEFORE pattern evaluation:
-           Phase 1:  activities = [a for a in all_activities if a != TARGET]
-           RQ2:      trace = [a for a in raw_trace if a != outcome_signal]
-
-    Without both steps, pattern evaluation would be inconsistent with Phase 1.
+    Without this, Tier 3 recomputation would produce holds_all values
+    inconsistent with Phase 1 (patterns evaluated on traces containing
+    'Send for Credit Collection' would have different satisfaction values).
     """
     print(f"\n   Loading event log: {csv_path}")
 
@@ -413,15 +501,6 @@ def load_event_log(
     act_col  = log_config['act_col']
     ts_col   = log_config['ts_col']
     df = df.dropna(subset=[case_col])
-
-    # Lifecycle filter: retain only COMPLETE events (RTFMP has start/complete pairs)
-    lc_col = log_config.get('lifecycle_col')
-    lc_val = log_config.get('lifecycle_value')
-    if lc_col and lc_val and lc_col in df.columns:
-        before = len(df)
-        df = df[df[lc_col].str.lower() == lc_val.lower()]
-        print(f"   Lifecycle filter ({lc_col}=={lc_val!r}): "
-              f"{before:,} → {len(df):,} events")
 
     outcome_signal = log_config['outcome_signal']
     outcome_mode   = log_config['outcome_mode']
@@ -487,49 +566,164 @@ def load_event_log(
     if strip_outcome:
         print(f"   Stripped {n_stripped_events:,} '{outcome_signal}' events from traces")
     print(f"   Class 1 (Sent for Credit Collection / Deviant): {n1:,} ({n1/len(case_data)*100:.1f}%)")
-    print(f"   Class 0 (No Credit Collection / Normal):       {n0:,} ({n0/len(case_data)*100:.1f}%)")
+    print(f"   Class 0 (No Credit Collection / Normal):        {n0:,} ({n0/len(case_data)*100:.1f}%)")
 
     return case_data
 
 
 def load_phase1_results(json_path: str) -> dict:
-    """Load Phase 1 three-hypothesis results JSON."""
+    """
+    Load Phase 1 JSON and construct two working pattern pools.
+
+    P1 v9.0 JSON sub-lists and their formats:
+        significant_patterns       — nested pddict (storey_fdr / bh_fdr sub-objects)
+                                     contains "Both" ∪ "Discriminative only" (is_significant_final)
+        structural_only_patterns   — flat compact dict (fields at top level)
+        discriminative_only_patterns — flat compact dict
+        all_patterns               — flat compact dict; includes "Neither"; is_significant_bh
+                                     at top level (not nested under bh_fdr)
+
+    NOTE: significant_patterns already contains "Discriminative only" (sigresults =
+    [r for r in patternresults if r.is_significant_final]). discriminative_only_patterns
+    stores the same records again. all_nested is deduplicated by spec (ct, a, b) to
+    prevent duplicate columns in Ours / Ours_Disc_Only feature matrices.
+
+    Internal pools:
+        _working_patterns      — deduplicated non-Neither patterns (Ours, Structural sets)
+        _working_patterns_full — all_patterns if available (BH, Union sets — includes "Neither")
+    """
     print(f"   Loading Phase 1 results: {json_path}")
     with open(json_path, 'r', encoding='utf-8') as f:
         data = json.load(f)
 
-    n_all = len(data.get('all_patterns', []))
-    n_sig = len(data.get('significant_patterns', []))
-    n_str = len(data.get('structural_only_patterns', []))
-    n_dis = len(data.get('discriminative_only_patterns', []))
-    print(f"   Phase 1 patterns: {n_all:,} total, "
-          f"{n_sig} Both, {n_str} Structural only, {n_dis} Discriminative only")
+    # ── Load all sub-lists from Phase 1 JSON ──────────────────────────
+    sig_pats  = data.get('significant_patterns', [])       # "Both"
+    str_pats  = data.get('structural_only_patterns', [])   # "Structural only"
+    dis_pats  = data.get('discriminative_only_patterns', [])# "Discriminative only"
+    all_pats  = data.get('all_patterns', [])               # ALL tested (includes "Neither")
 
-    # JSON schema validation
-    all_pats = data.get('all_patterns', [])
+    n_sig  = len(sig_pats)
+    n_str  = len(str_pats)
+    n_dis  = len(dis_pats)
+    n_full = len(all_pats)
+
+    print(f"   Phase 1 patterns loaded from sub-lists:")
+    print(f"     Both (significant_patterns):        {n_sig}  [nested pddict format]")
+    print(f"     Structural only:                    {n_str}  [flat compact format]")
+    print(f"     Discriminative only:                {n_dis}  [flat compact format]")
+
+    # Deduplicate by (constraint_type, activity_a, activity_b).
+    # significant_patterns = "Both" ∪ "Discriminative only"; discriminative_only_patterns
+    # stores the same "Discriminative only" records again → dedup prevents duplicate columns.
+    seen_specs = set()
+    all_nested = []
+    for p in sig_pats + str_pats + dis_pats:
+        spec = (p['constraint_type'], p['activity_a'], p.get('activity_b'))
+        if spec not in seen_specs:
+            seen_specs.add(spec)
+            all_nested.append(p)
+    n_raw = n_sig + n_str + n_dis
+    n_removed = n_raw - len(all_nested)
+    n_all = len(all_nested)
+    if n_removed > 0:
+        print(f"     Deduplicated: removed {n_removed} duplicate specs "
+              f"(Disc_only appears in both sig_pats and dis_pats)")
+    print(f"     Total non-Neither (deduplicated):   {n_all}")
     if all_pats:
-        actual_keys = set(all_pats[0].keys())
-        missing_keys = REQUIRED_PHASE1_KEYS - actual_keys
-        assert not missing_keys, (
-            f"Phase 1 JSON schema mismatch: required keys {missing_keys} "
-            f"not found. Actual keys: {sorted(actual_keys)}. "
-            f"Ensure Phase 1 was run with the matching version."
-        )
-        print(f"   ✓ JSON schema validated ({len(REQUIRED_PHASE1_KEYS)} required keys present, "
-              f"including 'direction')")
-
-        # Report direction distribution
-        dir_counts = Counter(p.get('direction', 'Unknown') for p in all_pats)
-        print(f"   Direction distribution (all patterns): {dict(dir_counts)}")
-
-        # Report direction distribution within 'Both' category
-        both_pats = [p for p in all_pats if p.get('significance_category') == 'Both']
-        if both_pats:
-            dir_both = Counter(p.get('direction', 'Unknown') for p in both_pats)
-            print(f"   Direction distribution (Both only):    {dict(dir_both)}")
+        print(f"     all_patterns (full list):           {n_full}  ← used for BH/Union sets")
     else:
-        print(f"   ⚠️  all_patterns is empty in Phase 1 JSON.")
+        print(f"     all_patterns:                       NOT PRESENT in JSON")
 
+    # ── BH/Union coverage: use all_patterns if available ──────────────
+    # "Neither" patterns (q_Hou > α, p_struct_dom > α) are excluded from sub-lists.
+    # A "Neither" pattern could still be BH-significant on the analytic Hou p-value.
+    # Loading all_patterns ensures BH and Union sets are not undercounted.
+    metadata = data.get('metadata', data.get('summary', {}))
+    n_tested = metadata.get('total_patterns_tested', None)
+    bh_ref   = metadata.get('bh_rejections_reference', None)
+    if n_tested is not None:
+        n_neither = n_tested - n_all
+        if n_neither > 0 and not all_pats:
+            print(f"   ⚠️  WARNING: {n_neither} 'Neither' patterns are absent "
+                  f"(not stored in any sub-list and all_patterns key not found). "
+                  f"BH and Union sets will be built from {n_all}/{n_tested} tested "
+                  f"patterns — counts may be lower than Phase 1 reference ({bh_ref}).")
+        elif n_neither > 0 and all_pats:
+            print(f"   ✓ BH/Union coverage: using all_patterns ({n_full}) "
+                  f"which includes {n_neither} 'Neither' patterns.")
+        else:
+            print(f"   ✓ Coverage: sub-lists cover all {n_tested} tested patterns.")
+
+    if not all_nested:
+        print(f"   ⚠️  All sub-lists are empty in Phase 1 JSON.")
+        data['_working_patterns']      = []
+        data['_working_patterns_full'] = all_pats if all_pats else []
+        return data
+
+    # ── Schema validation ─────────────────────────────────────────────
+    # Nested pddict: validate via first sig_pats entry (always pddict)
+    first = sig_pats[0] if sig_pats else all_nested[0]
+    actual_top = set(first.keys())
+    missing_top = REQUIRED_PHASE1_KEYS - actual_top
+    assert not missing_top, (
+        f"Phase 1 JSON schema mismatch — missing top-level keys: {missing_top}. "
+        f"Actual keys: {sorted(actual_top)}."
+    )
+    storey_sample = first.get('storey_fdr', {})
+    missing_storey = REQUIRED_STOREY_KEYS - set(storey_sample.keys())
+    assert not missing_storey, (
+        f"storey_fdr sub-object missing keys: {missing_storey}."
+    )
+    bh_sample = first.get('bh_fdr', {})
+    missing_bh = REQUIRED_BH_KEYS - set(bh_sample.keys())
+    assert not missing_bh, (
+        f"bh_fdr sub-object missing keys: {missing_bh}."
+    )
+    print(f"   ✓ Nested pddict schema validated on significant_patterns[0].")
+
+    # Flat compact: validate first str_pats entry (structural_only uses compact format)
+    if str_pats:
+        first_compact = str_pats[0]
+        assert 'significance_category' in first_compact, (
+            f"compact_pattern_dict missing 'significance_category' at top level. "
+            f"Keys: {sorted(first_compact.keys())}"
+        )
+        print(f"   ✓ Flat compact schema validated on structural_only_patterns[0].")
+
+    # ── BH count cross-check (best-effort) ────────────────────────────
+    # all_nested uses nested pddict for sig_pats entries — bh nested under bh_fdr.
+    # all_pats uses flat format — is_significant_bh at top level (no bh_fdr sub-object).
+    bh_count_nonnether = sum(
+        1 for p in all_nested
+        if p.get('bh_fdr', {}).get('is_significant', False)
+    )
+    bh_count_full = sum(
+        1 for p in all_pats
+        if p.get('is_significant_bh', False)   # flat format: top-level key
+    ) if all_pats else bh_count_nonnether
+    if bh_ref is not None:
+        if bh_count_full < bh_ref:
+            print(f"   ⚠️  BH count (all_patterns): {bh_count_full} "
+                  f"(Phase 1 reference: {bh_ref}). "
+                  f"Deficit of {bh_ref - bh_count_full} — possible schema mismatch.")
+        elif bh_count_nonnether < bh_ref:
+            print(f"   ✓ BH count from all_patterns: {bh_count_full} == metadata.bh_rejections_reference"
+                  f"  (non-Neither sub-lists alone: {bh_count_nonnether})")
+        else:
+            print(f"   ✓ BH count: {bh_count_full} == metadata.bh_rejections_reference")
+
+    # ── Direction distributions ───────────────────────────────────────
+    dir_all  = Counter(p.get('direction', 'Unknown') for p in all_nested)
+    dir_both = Counter(p.get('direction', 'Unknown') for p in sig_pats)
+    print(f"   Direction distribution (all sub-lists, n={n_all}): {dict(dir_all)}")
+    print(f"   Direction distribution (Both only,    n={n_sig}):  {dict(dir_both)}")
+
+    # ── Inject working pools under consistent internal keys ───────────
+    # _working_patterns:      deduplicated non-Neither (Ours, Structural sets)
+    # _working_patterns_full: all_patterns (flat, deduplicated by P1) if available,
+    #                         else fall back to all_nested (BH/Union may be undercounted)
+    data['_working_patterns']      = all_nested
+    data['_working_patterns_full'] = all_pats if all_pats else all_nested
     return data
 
 
@@ -645,47 +839,116 @@ def retrieve_phase1_artifacts(
 
 def _classify_pattern_from_json(pat: dict) -> dict:
     """
-    Extract classification fields from a Phase 1 all_patterns JSON entry.
-    Now includes direction and dominant_class for direction-aware analysis.
+    Extract classification fields from a P1 v9.0 JSON entry.
+
+    P1 v9.0 writes TWO structurally different formats depending on which JSON
+    sub-list a pattern appears in:
+
+    Nested pddict (significant_patterns only):
+        storey_fdr: { significance_category, is_significant_structural,
+                      is_significant_discriminative, is_significant_final }
+        bh_fdr:     { is_significant }  ← 'is_significant', not 'is_significant_bh'
+
+    Flat compact dict (structural_only_patterns, discriminative_only_patterns,
+                       all_patterns):
+        significance_category, is_significant_structural, is_significant_discriminative,
+        is_significant_final, is_significant_bh  ← all at TOP LEVEL, no sub-objects.
+
+    is_significant_structural: RAW NOMINAL label (p_struct_dom ≤ α) — NOT a Storey
+        q-value gate; stored for taxonomy only (P1 Step 5c).
+    is_significant_final = is_significant_discriminative = (q_Hou ≤ α) — SOLE gate.
     """
+    if 'storey_fdr' in pat:
+        # Nested pddict format — significant_patterns only
+        storey = pat['storey_fdr']
+        is_bh  = pat.get('bh_fdr', {}).get('is_significant', False)
+    else:
+        # Flat compact format — all other sub-lists and all_patterns
+        storey = pat
+        is_bh  = pat.get('is_significant_bh', False)
+
+    # is_significant_final may be absent in compact_pattern_dict for older P1 output;
+    # fall back to is_significant_discriminative (P1 invariant: final ≡ discriminative).
+    is_final = storey.get(
+        'is_significant_final',
+        storey.get('is_significant_discriminative', False),
+    )
+
     return {
         'spec': (
             pat['constraint_type'],
             pat['activity_a'],
             pat.get('activity_b'),
         ),
-        'significance_category': pat.get('significance_category', 'Neither'),
-        'is_significant_bh': pat.get('is_significant_bh', False),
-        'is_significant_structural': pat.get('is_significant_structural', False),
-        'is_significant_discriminative': pat.get('is_significant_discriminative', False),
-        'is_significant_final': pat.get('is_significant_final', False),
-        'direction': pat.get('direction', 'Unknown'),
-        'dominant_class': pat.get('dominant_class', None),
+        # RAW NOMINAL (p_struct_dom ≤ α) — NOT a Storey q-value gate
+        'significance_category':         storey.get('significance_category', 'Neither'),
+        'is_significant_structural':     storey.get('is_significant_structural', False),
+        # Hou-Storey primary gate (q_Hou ≤ α, Step 5b)
+        'is_significant_discriminative': storey.get('is_significant_discriminative', False),
+        # Identical to is_significant_discriminative — SOLE significance gate in P1 v9.0
+        'is_significant_final':          is_final,
+        # BH on analytic Satterthwaite p_Hou — reference comparison only
+        'is_significant_bh':             is_bh,
+        'direction':                     pat.get('direction', 'Unknown'),
+        'dominant_class':                pat.get('dominant_class', None),
     }
 
 
-# Pattern set selection predicates — applied to the JSON classification dict
-# DIRECTION-AWARE: Ours_Positive and Ours_Negative added
+# ============================================================================
+# PATTERN SET DEFINITIONS — Aligned with P1 v9.0 single-gate architecture
+# ============================================================================
+#
+# P1 SINGLE GATE: is_significant_final = is_significant_discriminative = (q_Hou ≤ α)
+#   is_significant_final = True  iff  significance_category in {"Both", "Discriminative only"}
+#
+# P1 TAXONOMY (descriptive, not a gate):
+#   Both               = q_Hou ≤ α  AND  p_struct_dom ≤ α (raw nominal)
+#   Discriminative only= q_Hou ≤ α  AND  p_struct_dom > α
+#   Structural only    = q_Hou > α  AND  p_struct_dom ≤ α (raw nominal)
+#   Neither            = both criteria fail
+#
+# WEIGHT ALIGNMENT (P1 CONFIG v9.0):
+#   B_label = 1500, B2_test = B_trace // 2 = 1000
+#   w_d = 1500 / 2500 = 0.60  (discriminative weight, Hou 2005 precision-proportional)
+#   w_s = 1000 / 2500 = 0.40  (structural weight, Hou 2005 precision-proportional)
+#
+# DIRECTION DEFINITION (P1, PatternTestResult.direction):
+#   "Positive" = class 1 (Sent for Credit Collection / deviant) has higher prevalence (prev1 ≥ prev0)
+#   "Negative" = class 0 (No Credit Collection / normal) has higher prevalence (prev0 > prev1)
+# ============================================================================
+
 PATTERN_SET_DEFINITIONS = {
-    'Ours':            lambda p: p['significance_category'] == 'Both',
-    'Ours_Positive':   lambda p: p['significance_category'] == 'Both' and p['direction'] == 'Positive',
-    'Ours_Negative':   lambda p: p['significance_category'] == 'Both' and p['direction'] == 'Negative',
-    'Discriminative':  lambda p: p['significance_category'] == 'Discriminative only',
+    # PRIMARY: Full P1 output — is_significant_final = True
+    # = "Both" ∪ "Discriminative only"  (Hou-Storey gate q_Hou ≤ α, Step 5b)
+    'Ours':            lambda p: p['is_significant_final'],
+
+    # P1 taxonomy sub-categories of Ours (ablation competitors)
+    'Ours_Both':       lambda p: p['significance_category'] == 'Both',
+    'Ours_Disc_Only':  lambda p: p['significance_category'] == 'Discriminative only',
+
+    # Direction-stratified sub-populations (within Ours)
+    'Ours_Positive':   lambda p: p['is_significant_final'] and p['direction'] == 'Positive',
+    'Ours_Negative':   lambda p: p['is_significant_final'] and p['direction'] == 'Negative',
+
+    # External baselines
     'Structural':      lambda p: p['significance_category'] == 'Structural only',
     'BH':              lambda p: p['is_significant_bh'],
-    'Union':           lambda p: (p['is_significant_discriminative'] or p['is_significant_structural']),
+    'Union':           lambda p: p['is_significant_discriminative'] or p['is_significant_structural'],
     'All':             None,  # uses holds_all.keys() directly
 }
 
 SET_NAMES_ORDERED = [
-    'Ours', 'Ours_Positive', 'Ours_Negative',
-    'Discriminative', 'Structural', 'BH', 'Union', 'All',
+    'Ours',
+    'Ours_Both', 'Ours_Disc_Only',
+    'Ours_Positive', 'Ours_Negative',
+    'Structural', 'BH', 'Union', 'All',
 ]
 
 # The "primary" sets for Wilcoxon comparison (Ours vs each of these)
 COMPETITOR_SETS = [
+    'Ours_Both', 'Ours_Disc_Only',
     'Ours_Positive', 'Ours_Negative',
-    'Discriminative', 'Structural', 'BH', 'Union', 'All',
+    'Structural', 'BH', 'Union', 'All',
 ]
 
 
@@ -700,6 +963,11 @@ def build_feature_matrix(
 
     Encoding (Di Francescomarino et al. 2022):
         X[i, j] = holds_all[pat_j].get(case_i, vacuous_fill)
+
+    NOTE on ternary sensitivity (vacuous_fill=2): creates ordinal encoding
+    {0=violated, 1=satisfied, 2=vacuous}. Numerically 2 > 1, implying
+    "vacuous > satisfied" — no semantic grounding. This is a sensitivity
+    analysis only; binary CWA (vacuous_fill=0) is the canonical encoding.
     """
     n = len(case_ids_ordered)
     k = len(pattern_specs)
@@ -723,32 +991,42 @@ def build_all_feature_matrices(
     candidates_all: List[Tuple],
 ) -> Tuple[Dict[str, dict], List[dict]]:
     """
-    STEP 2: Construct feature matrices for all 8 pattern sets.
+    STEP 2: Construct feature matrices for all 9 pattern sets.
+
+    BH/Union sets draw from _working_patterns_full (all_patterns, includes "Neither")
+    to avoid undercounting BH-significant "Neither" patterns.
+    All other sets draw from _working_patterns (non-Neither only — correct by construction).
 
     Returns:
         feature_matrices: Dict[set_name → {X, k, patterns, sparsity, direction_labels}]
-        all_pats_classified: List[dict] — full classified pattern list for Step 6
+        all_pats_classified: List[dict] — non-Neither classified patterns for Step 6
     """
     print(f"\n{'='*80}")
-    print("STEP 2: BUILD FEATURE MATRICES — 8 PATTERN SETS (direction-aware)")
+    print("STEP 2: BUILD FEATURE MATRICES — 9 PATTERN SETS (direction-aware)")
     print(f"{'='*80}")
 
-    all_pats = [_classify_pattern_from_json(p) for p in phase1_results.get('all_patterns', [])]
-    print(f"   Loaded {len(all_pats):,} pattern classifications from Phase 1 JSON")
+    # Non-Neither patterns: used for Ours/Ours_Both/Ours_Disc_Only/Structural sets
+    all_pats = [_classify_pattern_from_json(p) for p in phase1_results.get('_working_patterns', [])]
+    # Full pattern list (includes "Neither"): used for BH/Union sets to avoid undercounting
+    all_pats_full = [_classify_pattern_from_json(p) for p in phase1_results.get('_working_patterns_full', [])]
+    print(f"   Loaded {len(all_pats):,} non-Neither classifications from Phase 1 JSON")
+    print(f"   Loaded {len(all_pats_full):,} total classifications (for BH/Union sets)")
 
+    n_ours = sum(1 for p in all_pats if p['is_significant_final'])
     n_both = sum(1 for p in all_pats if p['significance_category'] == 'Both')
     categories_found = Counter(p['significance_category'] for p in all_pats)
     print(f"   Phase 1 verdict distribution: {dict(categories_found)}")
+    print(f"   Ours (is_significant_final): {n_ours}  = Both({n_both}) + Disc_Only({n_ours - n_both})")
 
-    if n_both == 0 and len(all_pats) > 0:
-        print(f"   ⚠️  WARNING: Zero 'Both' patterns found in Phase 1 JSON.")
+    if n_ours == 0 and len(all_pats) > 0:
+        print(f"   ⚠️  WARNING: Zero 'Ours' patterns (is_significant_final=True) found.")
 
     # Build spec → direction lookup for direction-aware analysis (Step 6)
     spec_to_direction = {}
-    for p in all_pats:
+    for p in all_pats_full:
         spec_to_direction[p['spec']] = p['direction']
 
-    json_specs = {p['spec'] for p in all_pats}
+    json_specs = {p['spec'] for p in all_pats_full}
     holds_specs = set(holds_all.keys())
     json_only = json_specs - holds_specs
     if json_only:
@@ -758,16 +1036,20 @@ def build_all_feature_matrices(
     print(f"\n   {'Set':>15s} {'k':>6s} {'Shape':>14s} {'Sparsity':>10s} {'Pos/Neg':>10s}")
     print(f"   {'─'*65}")
 
+    # Sets that need the full pattern pool (including "Neither") for correct BH/Union counts
+    FULL_POOL_SETS = {'BH', 'Union'}
+
     feature_matrices = {}
 
     for set_name in SET_NAMES_ORDERED:
         criterion = PATTERN_SET_DEFINITIONS[set_name]
+        pat_pool = all_pats_full if set_name in FULL_POOL_SETS else all_pats
 
         if criterion is None:
             selected = list(candidates_all)
         else:
             selected = [
-                p['spec'] for p in all_pats
+                p['spec'] for p in pat_pool
                 if criterion(p) and p['spec'] in holds_specs
             ]
 
@@ -818,6 +1100,7 @@ def run_nested_cv_for_set(
     set_name: str,
     base_seed: int = BASE_SEED,
     capture_models: bool = False,
+    sklearn_n_jobs: int = -1,  # n_jobs for GridSearchCV and RF; set to 1 when called from within a joblib.Parallel worker
 ) -> dict:
     """
     5-times repeated stratified 5-fold nested CV for one pattern set.
@@ -878,7 +1161,7 @@ def run_nested_cv_for_set(
                 ),
                 param_grid={'C': LR_C_GRID},
                 cv=inner_cv, scoring='roc_auc',
-                n_jobs=-1, refit=True,
+                n_jobs=sklearn_n_jobs, refit=True,
             )
             lr_gs.fit(X_tr, y_tr)
 
@@ -887,11 +1170,11 @@ def run_nested_cv_for_set(
                 RandomForestClassifier(
                     n_estimators=RF_N_ESTIMATORS,
                     class_weight='balanced',
-                    random_state=inner_seed, n_jobs=-1,
+                    random_state=inner_seed, n_jobs=sklearn_n_jobs,
                 ),
                 param_grid={'max_depth': RF_DEPTH_GRID},
                 cv=inner_cv, scoring='roc_auc',
-                n_jobs=-1, refit=True,
+                n_jobs=sklearn_n_jobs, refit=True,
             )
             rf_gs.fit(X_tr, y_tr)
 
@@ -955,7 +1238,7 @@ def run_step3_all_sets(
     y: np.ndarray,
     base_seed: int = BASE_SEED,
 ) -> Dict[str, dict]:
-    """STEP 3: Run nested CV for all 8 pattern sets."""
+    """STEP 3: Run nested CV for all 9 pattern sets."""
     print(f"\n{'='*80}")
     print("STEP 3: NESTED 5×5×5 CROSS-VALIDATION — 25 OUTER FOLDS PER SET")
     print(f"{'='*80}")
@@ -1157,10 +1440,11 @@ def run_step5_random_k_baseline(
     k_target: int,
     n_random_samples: int = N_RANDOM_SAMPLES,
     base_seed: int = BASE_SEED,
+    n_jobs: int = 1,   # >1 → parallelize the 30-sample loop via joblib.Parallel
 ) -> dict:
     """STEP 5: Random-k baseline."""
     print(f"\n{'='*80}")
-    print(f"STEP 5: RANDOM-k BASELINE (k={k_target}, R={n_random_samples})")
+    print(f"STEP 5: RANDOM-k BASELINE (k={k_target}, R={n_random_samples}, n_jobs={n_jobs})")
     print(f"{'='*80}")
 
     if k_target < MIN_FEATURES:
@@ -1171,16 +1455,27 @@ def run_step5_random_k_baseline(
         print(f"   ⚠️  k_target={k_target} > |candidates_all|={len(candidates_all)} — skipping.")
         return {'skipped': True, 'k': k_target}
 
-    all_auroc_scores = []
-    per_sample_means = []
-
-    for r in range(1, n_random_samples + 1):
+    def _worker_random(r: int) -> dict:
         rng = np.random.RandomState(base_seed + r)
         sample_idx = rng.choice(len(candidates_all), size=k_target, replace=False)
         sampled_patterns = [candidates_all[i] for i in sample_idx]
         X_rand = build_feature_matrix(sampled_patterns, holds_all, case_ids_ordered)
-        result = run_nested_cv_for_set(X_rand, y, set_name=f"Rand-{r:02d}", base_seed=base_seed)
+        # sklearn_n_jobs=1: outer joblib.Parallel is the active parallelism layer
+        return run_nested_cv_for_set(
+            X_rand, y, set_name=f"Rand-{r:02d}", base_seed=base_seed,
+            sklearn_n_jobs=1 if n_jobs != 1 else -1,
+        )
 
+    if n_jobs != 1:
+        raw_results = Parallel(n_jobs=n_jobs, backend='loky')(
+            delayed(_worker_random)(r) for r in range(1, n_random_samples + 1)
+        )
+    else:
+        raw_results = [_worker_random(r) for r in range(1, n_random_samples + 1)]
+
+    all_auroc_scores = []
+    per_sample_means = []
+    for result in raw_results:
         if not result['skipped']:
             all_auroc_scores.append(result['auroc_scores'])
             per_sample_means.append(result['mean_auroc'])
@@ -1270,7 +1565,10 @@ def run_step6_direction_analysis(
                 'std_auroc': res['std_auroc'],
             }
 
-    # Test: Ours vs Ours_Positive
+    # Step 6a Wilcoxon tests are EXPLORATORY (post-hoc, uncorrected for FWER).
+    # Step 4 (Holm-Bonferroni across 8 competitors) is the primary confirmatory family.
+    # These 2 comparisons are descriptive: they quantify directional sub-population
+    # contribution and do not constitute a separate null-hypothesis test family.
     ours_pos_res = cv_results.get('Ours_Positive', {})
     ours_neg_res = cv_results.get('Ours_Negative', {})
 
@@ -1361,12 +1659,14 @@ def run_step6_direction_analysis(
             print(f"   Mean direction consistency: {mean_consistency:.3f} ± {std_consistency:.3f}")
             print(f"   (1.0 = perfect alignment between Phase 1 direction and learned β sign)")
 
+            # Thresholds are informal benchmarks (no formal citation):
+            #   ≥0.85 = HIGH, ≥0.70 = MODERATE, <0.70 = LOW.
             if mean_consistency >= 0.85:
-                print(f"   ✓ HIGH consistency — Phase 1 direction labels are validated by LR")
+                print(f"   ✓ HIGH consistency (≥0.85) — Phase 1 direction labels validated by LR")
             elif mean_consistency >= 0.70:
-                print(f"   ~ MODERATE consistency — most directions confirmed, some noise")
+                print(f"   ~ MODERATE consistency (≥0.70) — most directions confirmed, some noise")
             else:
-                print(f"   ⚠️  LOW consistency — Phase 1 direction labels partially contradicted")
+                print(f"   ⚠️  LOW consistency (<0.70) — Phase 1 direction labels partially contradicted")
 
             # Per-feature consistency (across LR folds)
             per_feature_rate = np.where(
@@ -1506,7 +1806,7 @@ def generate_rq2_outputs(
 
     json_out = {
         'framework': 'RQ2 — Discriminative Signal Evaluation (Direction-Aware)',
-        'version': '3.0-SEPSIS-DIRECTION-AWARE',
+        'version': '4.0-RTFMP-P1-ALIGNED',
         'log': log_name,
         'timestamp': datetime.now().isoformat(),
         'configuration': {
@@ -1590,7 +1890,7 @@ def generate_rq2_outputs(
     rpt = []
     rpt.append("=" * 100)
     rpt.append(f"RQ2 — DO PATTERNS CARRY DISCRIMINATIVE SIGNAL?  [{log_name}]")
-    rpt.append(f"Version: 3.0-RTFMP-DIRECTION-AWARE")
+    rpt.append(f"Version: 4.0-RTFMP-P1-ALIGNED")
     rpt.append("=" * 100)
     rpt.append(f"Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
     rpt.append("")
@@ -1598,10 +1898,9 @@ def generate_rq2_outputs(
     rpt.append("─" * 100)
     rpt.append("DATASET")
     rpt.append("─" * 100)
-    rpt.append(f"  n = {len(y):,}  (Class 1 Sent-Credit-Collection: {n1:,}, Class 0 No-Credit-Collection: {n0:,})")
+    rpt.append(f"  n = {len(y):,}  (Class 1 Sent for Credit Collection: {n1:,}, Class 0 No Credit Collection: {n0:,})")
     rpt.append(f"  Class ratio: {n1/len(y)*100:.1f}% / {n0/len(y)*100:.1f}%")
-    rpt.append(f"  Lifecycle filter: COMPLETE events only (matching Phase 1)")
-    rpt.append(f"  Outcome signal stripped from traces: True — 'Send for Credit Collection' (matching Phase 1)")
+    rpt.append(f"  Outcome signal stripped from traces: True (matching Phase 1)")
     rpt.append("")
 
     rpt.append("─" * 100)
@@ -2099,6 +2398,7 @@ def run_rq2_single_log(
     output_dir: str,
     base_seed: int = BASE_SEED,
     holds_all_precomputed: Optional[Dict] = None,
+    n_jobs: int = 1,   # forwarded to run_step5_random_k_baseline
 ) -> dict:
     """Execute Steps 1–6 for a single event log and generate all outputs."""
     timing = {}
@@ -2143,6 +2443,7 @@ def run_rq2_single_log(
     random_baseline = run_step5_random_k_baseline(
         candidates_all, holds_all, case_ids_ordered, y,
         k_target=ours_k, n_random_samples=N_RANDOM_SAMPLES, base_seed=base_seed,
+        n_jobs=n_jobs,
     )
     timing['step5_random_k'] = time.time() - t_step
 
@@ -2199,11 +2500,11 @@ def validate_log_config(log_name: str, log_config: dict) -> List[str]:
 def main():
     print("\n" + "=" * 100)
     print("RQ2 — DO PATTERNS CARRY DISCRIMINATIVE SIGNAL?")
-    print("Version 3.0 — RTFMP — DIRECTION-AWARE")
+    print("Version 4.0 — SEPSIS — P1-ALIGNED (is_significant_final, Hou-Storey single gate)")
     print("=" * 100)
     print(f"\n🎯 EXPERIMENTAL DESIGN:")
-    print(f"   8 pattern sets: Ours, Ours_Positive, Ours_Negative, "
-          f"Discriminative, Structural, BH, Union, All")
+    print(f"   9 pattern sets: Ours (is_significant_final), Ours_Both, Ours_Disc_Only, "
+          f"Ours_Positive, Ours_Negative, Structural, BH, Union, All")
     print(f"   Nested CV: {N_OUTER_REPEATS}×{N_OUTER_SPLITS} outer × {N_INNER_SPLITS} inner")
     print(f"   Models: LR-L1 (C ∈ {LR_C_GRID}) + RF (n_est={RF_N_ESTIMATORS}, "
           f"depth ∈ {RF_DEPTH_GRID})")
@@ -2211,7 +2512,6 @@ def main():
     print(f"   Random baseline: {N_RANDOM_SAMPLES} samples × same CV")
     print(f"   Ternary sensitivity: {RUN_TERNARY_SENSITIVITY}")
     print(f"   Direction analysis: Step 6 (ablation + β-sign consistency + RF MDI)")
-    print(f"   Lifecycle filter: COMPLETE events only (Phase 1 consistency)")
     print(f"   Outcome stripping: 'Send for Credit Collection' removed from traces (Phase 1 consistency)")
     print(f"   Base seed: {BASE_SEED}")
     print("=" * 100)
@@ -2233,7 +2533,8 @@ def main():
         total_start = time.time()
 
         rq2_result = run_rq2_single_log(
-            log_name, log_config, RQ2_OUTPUT_DIR, base_seed=BASE_SEED
+            log_name, log_config, RQ2_OUTPUT_DIR, base_seed=BASE_SEED,
+            n_jobs=N_JOBS,
         )
 
         total_time = time.time() - total_start
@@ -2286,4 +2587,12 @@ def main():
 
 
 if __name__ == "__main__":
+    import argparse
+    parser = argparse.ArgumentParser(description="RQ2 — Discriminative Signal Evaluation")
+    parser.add_argument(
+        '--n-jobs', type=int, default=N_JOBS,
+        help=f'Number of parallel workers for Step 5 random-k baseline (-1 = all cores, default: {N_JOBS})'
+    )
+    args = parser.parse_args()
+    N_JOBS = args.n_jobs
     main()

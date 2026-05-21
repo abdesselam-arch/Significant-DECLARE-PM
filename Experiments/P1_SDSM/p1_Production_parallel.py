@@ -2657,7 +2657,7 @@ def execute_three_hypothesis_protocol(
     cat_counts = {"Both": 0, "Structural only": 0, "Discriminative only": 0, "Neither": 0}
 
     for r in pattern_results:
-        r.is_significant_final = r.is_significant_discriminative and r.is_significant_structural
+        r.is_significant_final = r.is_significant_discriminative  # and r.is_significant_structural
 
         if r.is_significant_discriminative and r.is_significant_structural:
             r.significance_category = "Both"

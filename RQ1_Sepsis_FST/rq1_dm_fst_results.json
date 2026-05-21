@@ -1,0 +1,94 @@
+{
+  "rq1_version": "2.0",
+  "method": "DeclareMiner_FST",
+  "log_name": "Sepsis",
+  "timestamp": "2026-05-20T22:36:46.493500",
+  "experiment_design": {
+    "method": "DeclareMiner_FST",
+    "shared_pool": "M_all from Phase 0 DECLARE spec (fixed; same as P1 and DRVA)",
+    "null_protocol": "Double-null: σ_label (permute class labels) ∘ σ_trace (shuffle activities within each trace). Under the double-null, every rejection is a false positive.",
+    "DM_FST_gate": "|Δconf̂(c)| >= τ_DM*(c)  with  τ_DM*(c) = τ_effect × √(n_ref / n_harm(c)), τ_effect=0.02, n_ref=1.0, n_floor=1. Thresholds and eligibility mask computed ONCE on the original log; held FIXED across all null replicates. No statistical test. No FDR correction.",
+    "why_FDR_uncontrolled": "DM-FST applies no FDR correction and no Adaptive Storey π̂₀ correction. The effect-size threshold has no Type I error interpretation and provides no distributional bound on E[V_b]. Empirical FDR_emp = E[V_b] / R_obs is measured via the doubly-null protocol. P1 applies Adaptive Storey–Gao correction which concentrates the budget on π̂₀ · m << m, empirically achieving FDR̂ ≤ α.",
+    "null_rep_budget": "Zero internal permutation iterations per replicate. DM-FST is deterministic: holds_null → conf_null → V_b."
+  },
+  "config": {
+    "B_NULL": 200,
+    "ALPHA": 0.05,
+    "BASE_SEED": 20260521,
+    "N_JOBS": -1,
+    "tau_effect": 0.02,
+    "n_ref": 1.0,
+    "n_floor": 1,
+    "tau_min": 0.02,
+    "tau_c_mean": 0.019999999999999997,
+    "tau_c_median": 0.02,
+    "R_obs_dm": 101,
+    "m_total": 437
+  },
+  "R_obs": {
+    "DeclareMiner_FST": 101
+  },
+  "empirical_fdr_table": [
+    {
+      "method": "DeclareMiner_FST",
+      "R_obs": 101,
+      "E_V_b": 228.165,
+      "FDR_emp": 2.259059405940594,
+      "PCER_emp": 0.522116704805492,
+      "FWER_emp": 1.0,
+      "FDR_CI_lower": 2.2431858597510854,
+      "FDR_CI_upper": 2.273030427487948,
+      "B_null": 200,
+      "m_total": 437,
+      "alpha": 0.05,
+      "controls_FDR": false
+    }
+  ],
+  "null_replicate_summary": {
+    "DeclareMiner_FST": {
+      "mean_V_b": 228.165,
+      "std_V_b": 10.542190237327347,
+      "max_V_b": 256,
+      "n_zero_V_b": 0
+    }
+  },
+  "diagnostics": {
+    "m_total": 437,
+    "R_obs_dm": 101,
+    "tau_effect": 0.02,
+    "n_ref": 1.0,
+    "n_floor": 1,
+    "tau_c_mean": 0.019999999999999997,
+    "tau_c_median": 0.02,
+    "tau_c_min": 0.02,
+    "tau_c_max": 0.02,
+    "delta_conf_mean": 0.09871503215250937,
+    "delta_conf_median": 0.0,
+    "delta_conf_max": 1.0,
+    "z_mean": 4.935751607625469,
+    "z_median": 0.0,
+    "z_max": 50.0,
+    "z_accepted_mean": 20.8771358181816,
+    "z_accepted_min": 1.063829787234044,
+    "z_accepted_max": 50.0,
+    "dc_accepted_mean": 0.4175427163636318,
+    "dc_accepted_min": 0.021276595744680882,
+    "dc_accepted_max": 1.0
+  },
+  "timing": {
+    "original_DM_seconds": 2.8787169456481934,
+    "null_permutations_seconds": 47.22325944900513,
+    "total_seconds": 50.10197639465332
+  },
+  "validation_checks": {
+    "marginals_preserved": true,
+    "deterministic_per_rep": true,
+    "tau_c_frozen": true,
+    "seed_layers": {
+      "held_out_label": "BASE_SEED + b",
+      "replicate_rs": "BASE_SEED + 100_000 + b",
+      "trace_shuffle": "BASE_SEED + 100_000 + b + 200_000",
+      "no_overlap": "B_NULL=200 < 100_000"
+    }
+  }
+}

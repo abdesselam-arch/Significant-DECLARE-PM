@@ -122,7 +122,7 @@ os.makedirs(REPLICATES_DIR, exist_ok=True)
 
 # Import from Phase 1 script (BPI-17 version)
 try:
-    from P1_SDSM.p1_BPI_17 import (
+    from Experiments.P1_SDSM.p1_BPI_17_hou import (
         CaseInfo, PatternTestResult,
         precompute_activity_index,
         evaluate_pattern_fast,

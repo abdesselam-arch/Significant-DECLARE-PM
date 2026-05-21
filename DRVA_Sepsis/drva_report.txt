@@ -1,0 +1,326 @@
+========================================================================================================================
+DRVA — DECLARATIVE RULES VARIANT ANALYSIS  (Cecconi et al. 2021)
+Sepsis ICU: Deviant (Return ER) vs. Normal (No Return ER)
+Shared M_all design: hierarchical pruning DISABLED
+========================================================================================================================
+Generated:  2026-05-21 11:17:19
+π=2,000  α=0.05  mmin=0.0  mdiff_min=0.0  hierarchical_pruning=False
+
+M_all:              437
+M_tested:           437  (= M_all at default params)
+Rejected (Cecconi): 56
+Rejected (Phipson): 56
+  Positive (Deviant-dominant): 6
+  Negative (Normal-dominant):  50
+
+========================================================================================================================
+TOP SIGNIFICANT RULES — ranked by Ediff descending
+========================================================================================================================
+
+Rank   1 | NotChainSuccession_ER Registration_Release B
+         Type:   NotChainSuccession
+         Acts:   ER Registration → Release B
+         Dir:    Negative
+         Conf_A=0.0000  Conf_B=1.0000  Ediff=1.0000  p_Cecconi=5.0000e-04  p_Phipson=4.9975e-04  C(r)=1
+
+Rank   2 | NotChainSuccession_ER Sepsis Triage_Release B
+         Type:   NotChainSuccession
+         Acts:   ER Sepsis Triage → Release B
+         Dir:    Negative
+         Conf_A=0.0000  Conf_B=1.0000  Ediff=1.0000  p_Cecconi=5.0000e-04  p_Phipson=4.9975e-04  C(r)=1
+
+Rank   3 | NotChainSuccession_ER Triage_Release B
+         Type:   NotChainSuccession
+         Acts:   ER Triage → Release B
+         Dir:    Negative
+         Conf_A=0.0000  Conf_B=1.0000  Ediff=1.0000  p_Cecconi=5.0000e-04  p_Phipson=4.9975e-04  C(r)=1
+
+Rank   4 | NotResponse_Release B_CRP
+         Type:   NotResponse
+         Acts:   Release B → CRP
+         Dir:    Negative
+         Conf_A=0.0000  Conf_B=1.0000  Ediff=1.0000  p_Cecconi=5.0000e-04  p_Phipson=4.9975e-04  C(r)=1
+
+Rank   5 | NotChainSuccession_Release B_CRP
+         Type:   NotChainSuccession
+         Acts:   Release B → CRP
+         Dir:    Negative
+         Conf_A=0.0000  Conf_B=1.0000  Ediff=1.0000  p_Cecconi=5.0000e-04  p_Phipson=4.9975e-04  C(r)=1
+
+Rank   6 | NotResponse_Release B_ER Registration
+         Type:   NotResponse
+         Acts:   Release B → ER Registration
+         Dir:    Negative
+         Conf_A=0.0000  Conf_B=1.0000  Ediff=1.0000  p_Cecconi=5.0000e-04  p_Phipson=4.9975e-04  C(r)=1
+
+Rank   7 | NotChainSuccession_Release B_ER Registration
+         Type:   NotChainSuccession
+         Acts:   Release B → ER Registration
+         Dir:    Negative
+         Conf_A=0.0000  Conf_B=1.0000  Ediff=1.0000  p_Cecconi=5.0000e-04  p_Phipson=4.9975e-04  C(r)=1
+
+Rank   8 | NotResponse_Release B_ER Sepsis Triage
+         Type:   NotResponse
+         Acts:   Release B → ER Sepsis Triage
+         Dir:    Negative
+         Conf_A=0.0000  Conf_B=1.0000  Ediff=1.0000  p_Cecconi=5.0000e-04  p_Phipson=4.9975e-04  C(r)=1
+
+Rank   9 | NotChainSuccession_Release B_ER Sepsis Triage
+         Type:   NotChainSuccession
+         Acts:   Release B → ER Sepsis Triage
+         Dir:    Negative
+         Conf_A=0.0000  Conf_B=1.0000  Ediff=1.0000  p_Cecconi=5.0000e-04  p_Phipson=4.9975e-04  C(r)=1
+
+Rank  10 | NotResponse_Release B_ER Triage
+         Type:   NotResponse
+         Acts:   Release B → ER Triage
+         Dir:    Negative
+         Conf_A=0.0000  Conf_B=1.0000  Ediff=1.0000  p_Cecconi=5.0000e-04  p_Phipson=4.9975e-04  C(r)=1
+
+Rank  11 | NotChainSuccession_Release B_ER Triage
+         Type:   NotChainSuccession
+         Acts:   Release B → ER Triage
+         Dir:    Negative
+         Conf_A=0.0000  Conf_B=1.0000  Ediff=1.0000  p_Cecconi=5.0000e-04  p_Phipson=4.9975e-04  C(r)=1
+
+Rank  12 | NotResponse_Release B_Leucocytes
+         Type:   NotResponse
+         Acts:   Release B → Leucocytes
+         Dir:    Negative
+         Conf_A=0.0000  Conf_B=1.0000  Ediff=1.0000  p_Cecconi=5.0000e-04  p_Phipson=4.9975e-04  C(r)=1
+
+Rank  13 | NotChainSuccession_Release B_Leucocytes
+         Type:   NotChainSuccession
+         Acts:   Release B → Leucocytes
+         Dir:    Negative
+         Conf_A=0.0000  Conf_B=1.0000  Ediff=1.0000  p_Cecconi=5.0000e-04  p_Phipson=4.9975e-04  C(r)=1
+
+Rank  14 | NotResponse_Release B_LacticAcid
+         Type:   NotResponse
+         Acts:   Release B → LacticAcid
+         Dir:    Negative
+         Conf_A=0.0000  Conf_B=1.0000  Ediff=1.0000  p_Cecconi=5.0000e-04  p_Phipson=4.9975e-04  C(r)=1
+
+Rank  15 | NotChainSuccession_Release B_LacticAcid
+         Type:   NotChainSuccession
+         Acts:   Release B → LacticAcid
+         Dir:    Negative
+         Conf_A=0.0000  Conf_B=1.0000  Ediff=1.0000  p_Cecconi=5.0000e-04  p_Phipson=4.9975e-04  C(r)=1
+
+Rank  16 | NotResponse_Release B_IV Antibiotics
+         Type:   NotResponse
+         Acts:   Release B → IV Antibiotics
+         Dir:    Negative
+         Conf_A=0.0000  Conf_B=1.0000  Ediff=1.0000  p_Cecconi=5.0000e-04  p_Phipson=4.9975e-04  C(r)=1
+
+Rank  17 | NotChainSuccession_Release B_IV Antibiotics
+         Type:   NotChainSuccession
+         Acts:   Release B → IV Antibiotics
+         Dir:    Negative
+         Conf_A=0.0000  Conf_B=1.0000  Ediff=1.0000  p_Cecconi=5.0000e-04  p_Phipson=4.9975e-04  C(r)=1
+
+Rank  18 | NotResponse_Release B_IV Liquid
+         Type:   NotResponse
+         Acts:   Release B → IV Liquid
+         Dir:    Negative
+         Conf_A=0.0000  Conf_B=1.0000  Ediff=1.0000  p_Cecconi=5.0000e-04  p_Phipson=4.9975e-04  C(r)=1
+
+Rank  19 | NotChainSuccession_Release B_IV Liquid
+         Type:   NotChainSuccession
+         Acts:   Release B → IV Liquid
+         Dir:    Negative
+         Conf_A=0.0000  Conf_B=1.0000  Ediff=1.0000  p_Cecconi=5.0000e-04  p_Phipson=4.9975e-04  C(r)=1
+
+Rank  20 | NotChainSuccession_Admission IC_Release B
+         Type:   NotChainSuccession
+         Acts:   Admission IC → Release B
+         Dir:    Negative
+         Conf_A=0.0000  Conf_B=1.0000  Ediff=1.0000  p_Cecconi=1.4000e-02  p_Phipson=1.3993e-02  C(r)=28
+
+Rank  21 | NotResponse_Release B_Admission IC
+         Type:   NotResponse
+         Acts:   Release B → Admission IC
+         Dir:    Negative
+         Conf_A=0.0000  Conf_B=1.0000  Ediff=1.0000  p_Cecconi=1.4000e-02  p_Phipson=1.3993e-02  C(r)=28
+
+Rank  22 | NotChainSuccession_Release B_Admission IC
+         Type:   NotChainSuccession
+         Acts:   Release B → Admission IC
+         Dir:    Negative
+         Conf_A=0.0000  Conf_B=1.0000  Ediff=1.0000  p_Cecconi=1.4000e-02  p_Phipson=1.3993e-02  C(r)=28
+
+Rank  23 | Succession_CRP_Release B
+         Type:   Succession
+         Acts:   CRP → Release B
+         Dir:    Negative
+         Conf_A=0.0000  Conf_B=1.0000  Ediff=1.0000  p_Cecconi=5.0000e-04  p_Phipson=4.9975e-04  C(r)=1
+
+Rank  24 | Succession_Leucocytes_Release B
+         Type:   Succession
+         Acts:   Leucocytes → Release B
+         Dir:    Negative
+         Conf_A=0.0000  Conf_B=1.0000  Ediff=1.0000  p_Cecconi=5.0000e-04  p_Phipson=4.9975e-04  C(r)=1
+
+Rank  25 | Succession_ER Registration_Release B
+         Type:   Succession
+         Acts:   ER Registration → Release B
+         Dir:    Negative
+         Conf_A=0.0000  Conf_B=1.0000  Ediff=1.0000  p_Cecconi=5.0000e-04  p_Phipson=4.9975e-04  C(r)=1
+
+Rank  26 | Succession_ER Sepsis Triage_Release B
+         Type:   Succession
+         Acts:   ER Sepsis Triage → Release B
+         Dir:    Negative
+         Conf_A=0.0000  Conf_B=1.0000  Ediff=1.0000  p_Cecconi=5.0000e-04  p_Phipson=4.9975e-04  C(r)=1
+
+Rank  27 | Succession_ER Triage_Release B
+         Type:   Succession
+         Acts:   ER Triage → Release B
+         Dir:    Negative
+         Conf_A=0.0000  Conf_B=1.0000  Ediff=1.0000  p_Cecconi=5.0000e-04  p_Phipson=4.9975e-04  C(r)=1
+
+Rank  28 | NotChainSuccession_Release B_Admission NC
+         Type:   NotChainSuccession
+         Acts:   Release B → Admission NC
+         Dir:    Negative
+         Conf_A=0.0000  Conf_B=0.9800  Ediff=0.9800  p_Cecconi=5.0000e-04  p_Phipson=4.9975e-04  C(r)=1
+
+Rank  29 | NotResponse_Release B_Admission NC
+         Type:   NotResponse
+         Acts:   Release B → Admission NC
+         Dir:    Negative
+         Conf_A=0.0000  Conf_B=0.9800  Ediff=0.9800  p_Cecconi=5.0000e-04  p_Phipson=4.9975e-04  C(r)=1
+
+Rank  30 | NotChainSuccession_IV Antibiotics_Release B
+         Type:   NotChainSuccession
+         Acts:   IV Antibiotics → Release B
+         Dir:    Negative
+         Conf_A=0.0000  Conf_B=0.9778  Ediff=0.9778  p_Cecconi=5.0000e-04  p_Phipson=4.9975e-04  C(r)=1
+
+Rank  31 | NotChainSuccession_IV Liquid_Release B
+         Type:   NotChainSuccession
+         Acts:   IV Liquid → Release B
+         Dir:    Negative
+         Conf_A=0.0000  Conf_B=0.9762  Ediff=0.9762  p_Cecconi=5.0000e-04  p_Phipson=4.9975e-04  C(r)=1
+
+Rank  32 | NotChainSuccession_LacticAcid_Release B
+         Type:   NotChainSuccession
+         Acts:   LacticAcid → Release B
+         Dir:    Negative
+         Conf_A=0.0000  Conf_B=0.9200  Ediff=0.9200  p_Cecconi=5.0000e-04  p_Phipson=4.9975e-04  C(r)=1
+
+Rank  33 | NotChainSuccession_Leucocytes_Release B
+         Type:   NotChainSuccession
+         Acts:   Leucocytes → Release B
+         Dir:    Negative
+         Conf_A=0.0000  Conf_B=0.7679  Ediff=0.7679  p_Cecconi=5.0000e-04  p_Phipson=4.9975e-04  C(r)=1
+
+Rank  34 | NotChainSuccession_Admission NC_Release B
+         Type:   NotChainSuccession
+         Acts:   Admission NC → Release B
+         Dir:    Negative
+         Conf_A=0.0000  Conf_B=0.6600  Ediff=0.6600  p_Cecconi=5.0000e-04  p_Phipson=4.9975e-04  C(r)=1
+
+Rank  35 | NotChainSuccession_CRP_Release B
+         Type:   NotChainSuccession
+         Acts:   CRP → Release B
+         Dir:    Negative
+         Conf_A=0.0000  Conf_B=0.6429  Ediff=0.6429  p_Cecconi=5.0000e-04  p_Phipson=4.9975e-04  C(r)=1
+
+Rank  36 | End_Release A
+         Type:   End
+         Act:    Release A
+         Dir:    Positive
+         Conf_A=0.9286  Conf_B=0.5205  Ediff=0.4080  p_Cecconi=5.0000e-04  p_Phipson=4.9975e-04  C(r)=1
+
+Rank  37 | Succession_CRP_IV Antibiotics
+         Type:   Succession
+         Acts:   CRP → IV Antibiotics
+         Dir:    Negative
+         Conf_A=0.0646  Conf_B=0.2862  Ediff=0.2216  p_Cecconi=5.0000e-04  p_Phipson=4.9975e-04  C(r)=1
+
+Rank  38 | Succession_Leucocytes_IV Antibiotics
+         Type:   Succession
+         Acts:   Leucocytes → IV Antibiotics
+         Dir:    Negative
+         Conf_A=0.0951  Conf_B=0.3023  Ediff=0.2073  p_Cecconi=5.0000e-04  p_Phipson=4.9975e-04  C(r)=1
+
+Rank  39 | NotChainSuccession_Leucocytes_CRP
+         Type:   NotChainSuccession
+         Acts:   Leucocytes → CRP
+         Dir:    Negative
+         Conf_A=0.1164  Conf_B=0.3001  Ediff=0.1837  p_Cecconi=5.0000e-04  p_Phipson=4.9975e-04  C(r)=1
+
+Rank  40 | NotChainSuccession_CRP_Leucocytes
+         Type:   NotChainSuccession
+         Acts:   CRP → Leucocytes
+         Dir:    Negative
+         Conf_A=0.2671  Conf_B=0.3941  Ediff=0.1270  p_Cecconi=5.0000e-04  p_Phipson=4.9975e-04  C(r)=1
+
+Rank  41 | End_IV Antibiotics
+         Type:   End
+         Act:    IV Antibiotics
+         Dir:    Negative
+         Conf_A=0.0000  Conf_B=0.1152  Ediff=0.1152  p_Cecconi=5.0000e-04  p_Phipson=4.9975e-04  C(r)=1
+
+Rank  42 | NotChainSuccession_LacticAcid_CRP
+         Type:   NotChainSuccession
+         Acts:   LacticAcid → CRP
+         Dir:    Negative
+         Conf_A=0.6145  Conf_B=0.6884  Ediff=0.0738  p_Cecconi=4.5000e-02  p_Phipson=4.4978e-02  C(r)=90
+
+Rank  43 | End_Release B
+         Type:   End
+         Act:    Release B
+         Dir:    Negative
+         Conf_A=0.0000  Conf_B=0.0728  Ediff=0.0728  p_Cecconi=5.0000e-04  p_Phipson=4.9975e-04  C(r)=1
+
+Rank  44 | End_ER Sepsis Triage
+         Type:   End
+         Act:    ER Sepsis Triage
+         Dir:    Negative
+         Conf_A=0.0000  Conf_B=0.0649  Ediff=0.0649  p_Cecconi=5.0000e-04  p_Phipson=4.9975e-04  C(r)=1
+
+Rank  45 | End_CRP
+         Type:   End
+         Act:    CRP
+         Dir:    Negative
+         Conf_A=0.0000  Conf_B=0.0543  Ediff=0.0543  p_Cecconi=5.0000e-04  p_Phipson=4.9975e-04  C(r)=1
+
+Rank  46 | NotChainSuccession_IV Liquid_Leucocytes
+         Type:   NotChainSuccession
+         Acts:   IV Liquid → Leucocytes
+         Dir:    Negative
+         Conf_A=0.8930  Conf_B=0.9450  Ediff=0.0520  p_Cecconi=1.0500e-02  p_Phipson=1.0495e-02  C(r)=21
+
+Rank  47 | NotResponse_Leucocytes_ER Triage
+         Type:   NotResponse
+         Acts:   Leucocytes → ER Triage
+         Dir:    Positive
+         Conf_A=0.9625  Conf_B=0.9150  Ediff=0.0474  p_Cecconi=7.0000e-03  p_Phipson=6.9965e-03  C(r)=14
+
+Rank  48 | NotResponse_CRP_ER Triage
+         Type:   NotResponse
+         Acts:   CRP → ER Triage
+         Dir:    Positive
+         Conf_A=0.9659  Conf_B=0.9187  Ediff=0.0472  p_Cecconi=7.5000e-03  p_Phipson=7.4963e-03  C(r)=15
+
+Rank  49 | End_Leucocytes
+         Type:   End
+         Act:    Leucocytes
+         Dir:    Negative
+         Conf_A=0.0102  Conf_B=0.0556  Ediff=0.0454  p_Cecconi=1.5000e-03  p_Phipson=1.4993e-03  C(r)=3
+
+Rank  50 | End_LacticAcid
+         Type:   End
+         Act:    LacticAcid
+         Dir:    Negative
+         Conf_A=0.0034  Conf_B=0.0305  Ediff=0.0271  p_Cecconi=9.0000e-03  p_Phipson=8.9955e-03  C(r)=18
+
+========================================================================================================================
+TIMING
+========================================================================================================================
+  encoding                 : 1.0s
+  pruning                  : 0.0s
+  permutation_test         : 4.4s
+  total                    : 6.3s

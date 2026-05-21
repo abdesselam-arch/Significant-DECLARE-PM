@@ -1,0 +1,251 @@
+========================================================================================================================
+DvM — Rule Set (Section 7.5 — final model trained on full dataset)
+Reference: Di Francescomarino et al. (2025), BISE 67(6):877–894
+========================================================================================================================
+Generated: 2026-05-21 14:06:09
+
+────────────────────────────────────────────────────────────────────────────────
+ENCODING: IA
+  Selected features (15): ia_Release A, ia_Admission NC, ia_IV Antibiotics, ia_IV Liquid, ia_Release B, ia_CRP, ia_Leucocytes, ia_Admission IC, ia_LacticAcid, ia_ER Sepsis Triage ...
+  RipperK rules (1):
+    R01: ia_Release A=1.0 AND ia_IV Liquid=1.0 AND ia_LacticAcid=>2.0
+  DecisionTree rules (67):
+    D01: ia_Release A <= 0.5000 AND ia_Release D <= 0.5000 AND ia_Release C <= 0.5000 AND ia_LacticAcid > 10.0000 AND ia_CRP <= 15.5000
+    D02: ia_Release A <= 0.5000 AND ia_Release D <= 0.5000 AND ia_Release C > 0.5000 AND ia_Leucocytes > 5.5000 AND ia_CRP <= 40.0000 AND ia_IV Antibiotics > 0.5000 AND ia_CRP > 6.5000
+    D03: ia_Release A <= 0.5000 AND ia_Release D > 0.5000 AND ia_Leucocytes <= 7.5000 AND ia_Leucocytes <= 5.5000 AND ia_IV Antibiotics > 0.5000 AND ia_Leucocytes <= 3.5000 AND ia_IV Liquid <= 0.5000
+    D04: ia_Release A <= 0.5000 AND ia_Release D > 0.5000 AND ia_Leucocytes <= 7.5000 AND ia_Leucocytes <= 5.5000 AND ia_IV Antibiotics > 0.5000 AND ia_Leucocytes <= 3.5000 AND ia_IV Liquid > 0.5000 AND ia_Leucocytes <= 2.5000 AND ia_Admission NC > 1.5000
+    D05: ia_Release A <= 0.5000 AND ia_Release D > 0.5000 AND ia_Leucocytes <= 7.5000 AND ia_Leucocytes <= 5.5000 AND ia_IV Antibiotics > 0.5000 AND ia_Leucocytes > 3.5000
+    D06: ia_Release A <= 0.5000 AND ia_Release D > 0.5000 AND ia_Leucocytes > 7.5000 AND ia_CRP <= 19.5000 AND ia_LacticAcid <= 1.5000 AND ia_Leucocytes <= 11.0000
+    D07: ia_Release A <= 0.5000 AND ia_Release D > 0.5000 AND ia_Leucocytes > 7.5000 AND ia_CRP <= 19.5000 AND ia_LacticAcid > 1.5000
+    D08: ia_Release A > 0.5000 AND ia_Leucocytes <= 2.5000 AND ia_CRP <= 4.5000 AND ia_LacticAcid <= 0.5000 AND ia_Admission NC <= 1.5000 AND ia_IV Antibiotics <= 0.5000 AND ia_Leucocytes > 1.5000 AND ia_CRP > 0.5000 AND ia_CRP <= 1.5000
+    D09: ia_Release A > 0.5000 AND ia_Leucocytes <= 2.5000 AND ia_CRP <= 4.5000 AND ia_LacticAcid <= 0.5000 AND ia_Admission NC > 1.5000 AND ia_Leucocytes <= 1.5000 AND ia_Admission NC <= 2.5000
+    D10: ia_Release A > 0.5000 AND ia_Leucocytes <= 2.5000 AND ia_CRP <= 4.5000 AND ia_LacticAcid > 0.5000 AND ia_CRP <= 2.5000 AND ia_Admission IC <= 0.5000 AND ia_CRP <= 1.5000 AND ia_IV Antibiotics <= 0.5000 AND ia_Admission NC <= 1.5000
+    D11: ia_Release A > 0.5000 AND ia_Leucocytes <= 2.5000 AND ia_CRP <= 4.5000 AND ia_LacticAcid > 0.5000 AND ia_CRP <= 2.5000 AND ia_Admission IC <= 0.5000 AND ia_CRP <= 1.5000 AND ia_IV Antibiotics > 0.5000 AND ia_Admission NC > 1.5000 AND ia_Admission NC <= 2.5000 AND ia_Leucocytes <= 1.5000
+    D12: ia_Release A > 0.5000 AND ia_Leucocytes <= 2.5000 AND ia_CRP <= 4.5000 AND ia_LacticAcid > 0.5000 AND ia_CRP <= 2.5000 AND ia_Admission IC <= 0.5000 AND ia_CRP > 1.5000 AND ia_Admission NC <= 1.5000 AND ia_IV Liquid > 0.5000 AND ia_Leucocytes <= 1.5000
+    D13: ia_Release A > 0.5000 AND ia_Leucocytes <= 2.5000 AND ia_CRP <= 4.5000 AND ia_LacticAcid > 0.5000 AND ia_CRP <= 2.5000 AND ia_Admission IC <= 0.5000 AND ia_CRP > 1.5000 AND ia_Admission NC > 1.5000 AND ia_Admission NC <= 2.5000 AND ia_IV Liquid <= 0.5000 AND ia_IV Antibiotics > 0.5000
+    D14: ia_Release A > 0.5000 AND ia_Leucocytes <= 2.5000 AND ia_CRP <= 4.5000 AND ia_LacticAcid > 0.5000 AND ia_CRP > 2.5000 AND ia_Admission IC <= 0.5000 AND ia_IV Liquid <= 0.5000 AND ia_Admission NC <= 1.5000 AND ia_LacticAcid > 1.5000
+    D15: ia_Release A > 0.5000 AND ia_Leucocytes <= 2.5000 AND ia_CRP <= 4.5000 AND ia_LacticAcid > 0.5000 AND ia_CRP > 2.5000 AND ia_Admission IC <= 0.5000 AND ia_IV Liquid > 0.5000 AND ia_Admission NC > 1.5000 AND ia_Leucocytes <= 1.5000 AND ia_CRP > 3.5000
+    D16: ia_Release A > 0.5000 AND ia_Leucocytes <= 2.5000 AND ia_CRP <= 4.5000 AND ia_LacticAcid > 0.5000 AND ia_CRP > 2.5000 AND ia_Admission IC > 0.5000
+    D17: ia_Release A > 0.5000 AND ia_Leucocytes <= 2.5000 AND ia_CRP > 4.5000
+    D18: ia_Release A > 0.5000 AND ia_Leucocytes > 2.5000 AND ia_LacticAcid <= 0.5000 AND ia_CRP <= 5.5000 AND ia_Leucocytes <= 8.5000 AND ia_Leucocytes <= 5.5000 AND ia_Leucocytes <= 4.5000 AND ia_Admission IC <= 0.5000 AND ia_CRP > 2.0000 AND ia_CRP <= 4.5000 AND ia_Leucocytes <= 3.5000 AND ia_CRP <= 3.5000 AND ia_IV Liquid <= 0.5000 AND ia_Admission NC <= 1.5000
+    D19: ia_Release A > 0.5000 AND ia_Leucocytes > 2.5000 AND ia_LacticAcid <= 0.5000 AND ia_CRP <= 5.5000 AND ia_Leucocytes <= 8.5000 AND ia_Leucocytes <= 5.5000 AND ia_Leucocytes <= 4.5000 AND ia_Admission IC <= 0.5000 AND ia_CRP > 2.0000 AND ia_CRP <= 4.5000 AND ia_Leucocytes <= 3.5000 AND ia_CRP > 3.5000 AND ia_IV Liquid > 0.5000
+    D20: ia_Release A > 0.5000 AND ia_Leucocytes > 2.5000 AND ia_LacticAcid <= 0.5000 AND ia_CRP <= 5.5000 AND ia_Leucocytes <= 8.5000 AND ia_Leucocytes <= 5.5000 AND ia_Leucocytes <= 4.5000 AND ia_Admission IC <= 0.5000 AND ia_CRP > 2.0000 AND ia_CRP <= 4.5000 AND ia_Leucocytes > 3.5000 AND ia_CRP <= 3.5000
+    D21: ia_Release A > 0.5000 AND ia_Leucocytes > 2.5000 AND ia_LacticAcid <= 0.5000 AND ia_CRP <= 5.5000 AND ia_Leucocytes <= 8.5000 AND ia_Leucocytes > 5.5000 AND ia_CRP <= 3.0000
+    D22: ia_Release A > 0.5000 AND ia_Leucocytes > 2.5000 AND ia_LacticAcid > 0.5000 AND ia_IV Antibiotics <= 0.5000 AND ia_Leucocytes <= 3.5000 AND ia_Admission IC > 0.5000
+    D23: ia_Release A > 0.5000 AND ia_Leucocytes > 2.5000 AND ia_LacticAcid > 0.5000 AND ia_IV Antibiotics <= 0.5000 AND ia_Leucocytes > 3.5000 AND ia_Leucocytes <= 6.5000 AND ia_CRP <= 5.5000 AND ia_CRP <= 4.5000 AND ia_LacticAcid > 2.0000
+    D24: ia_Release A > 0.5000 AND ia_Leucocytes > 2.5000 AND ia_LacticAcid > 0.5000 AND ia_IV Antibiotics <= 0.5000 AND ia_Leucocytes > 3.5000 AND ia_Leucocytes <= 6.5000 AND ia_CRP <= 5.5000 AND ia_CRP > 4.5000
+    D25: ia_Release A > 0.5000 AND ia_Leucocytes > 2.5000 AND ia_LacticAcid > 0.5000 AND ia_IV Antibiotics <= 0.5000 AND ia_Leucocytes > 3.5000 AND ia_Leucocytes > 6.5000
+    D26: ia_Release A > 0.5000 AND ia_Leucocytes > 2.5000 AND ia_LacticAcid > 0.5000 AND ia_IV Antibiotics > 0.5000 AND ia_CRP <= 2.5000 AND ia_IV Liquid > 0.5000 AND ia_Admission NC <= 1.5000 AND ia_CRP <= 1.5000
+    D27: ia_Release A > 0.5000 AND ia_Leucocytes > 2.5000 AND ia_LacticAcid > 0.5000 AND ia_IV Antibiotics > 0.5000 AND ia_CRP <= 2.5000 AND ia_IV Liquid > 0.5000 AND ia_Admission NC <= 1.5000 AND ia_CRP > 1.5000 AND ia_Leucocytes <= 3.5000
+    D28: ia_Release A > 0.5000 AND ia_Leucocytes > 2.5000 AND ia_LacticAcid > 0.5000 AND ia_IV Antibiotics > 0.5000 AND ia_CRP <= 2.5000 AND ia_IV Liquid > 0.5000 AND ia_Admission NC <= 1.5000 AND ia_CRP > 1.5000 AND ia_Leucocytes > 3.5000
+    D29: ia_Release A > 0.5000 AND ia_Leucocytes > 2.5000 AND ia_LacticAcid > 0.5000 AND ia_IV Antibiotics > 0.5000 AND ia_CRP <= 2.5000 AND ia_IV Liquid > 0.5000 AND ia_Admission NC > 1.5000 AND ia_Leucocytes <= 4.5000 AND ia_LacticAcid > 1.5000
+    D30: ia_Release A > 0.5000 AND ia_Leucocytes > 2.5000 AND ia_LacticAcid > 0.5000 AND ia_IV Antibiotics > 0.5000 AND ia_CRP <= 2.5000 AND ia_IV Liquid > 0.5000 AND ia_Admission NC > 1.5000 AND ia_Leucocytes > 4.5000
+    D31: ia_Release A > 0.5000 AND ia_Leucocytes > 2.5000 AND ia_LacticAcid > 0.5000 AND ia_IV Antibiotics > 0.5000 AND ia_CRP > 2.5000 AND ia_Leucocytes <= 16.0000 AND ia_CRP <= 7.5000 AND ia_LacticAcid <= 3.5000 AND ia_Admission NC <= 2.5000 AND ia_Leucocytes <= 8.5000 AND ia_Leucocytes <= 5.5000 AND ia_ER Triage <= 1.5000 AND ia_CRP <= 6.5000 AND ia_CRP <= 4.5000 AND ia_Admission IC <= 1.5000 AND ia_Leucocytes <= 4.5000 AND ia_CRP <= 3.5000 AND ia_LacticAcid <= 2.5000 AND ia_Admission NC <= 1.5000 AND ia_Admission IC <= 0.5000 AND ia_Leucocytes > 3.5000
+    D32: ia_Release A > 0.5000 AND ia_Leucocytes > 2.5000 AND ia_LacticAcid > 0.5000 AND ia_IV Antibiotics > 0.5000 AND ia_CRP > 2.5000 AND ia_Leucocytes <= 16.0000 AND ia_CRP <= 7.5000 AND ia_LacticAcid <= 3.5000 AND ia_Admission NC <= 2.5000 AND ia_Leucocytes <= 8.5000 AND ia_Leucocytes <= 5.5000 AND ia_ER Triage <= 1.5000 AND ia_CRP <= 6.5000 AND ia_CRP <= 4.5000 AND ia_Admission IC <= 1.5000 AND ia_Leucocytes <= 4.5000 AND ia_CRP <= 3.5000 AND ia_LacticAcid <= 2.5000 AND ia_Admission NC > 1.5000 AND ia_Admission IC > 0.5000
+    D33: ia_Release A > 0.5000 AND ia_Leucocytes > 2.5000 AND ia_LacticAcid > 0.5000 AND ia_IV Antibiotics > 0.5000 AND ia_CRP > 2.5000 AND ia_Leucocytes <= 16.0000 AND ia_CRP <= 7.5000 AND ia_LacticAcid <= 3.5000 AND ia_Admission NC <= 2.5000 AND ia_Leucocytes <= 8.5000 AND ia_Leucocytes <= 5.5000 AND ia_ER Triage <= 1.5000 AND ia_CRP <= 6.5000 AND ia_CRP <= 4.5000 AND ia_Admission IC <= 1.5000 AND ia_Leucocytes <= 4.5000 AND ia_CRP <= 3.5000 AND ia_LacticAcid > 2.5000 AND ia_Admission IC > 0.5000
+    D34: ia_Release A > 0.5000 AND ia_Leucocytes > 2.5000 AND ia_LacticAcid > 0.5000 AND ia_IV Antibiotics > 0.5000 AND ia_CRP > 2.5000 AND ia_Leucocytes <= 16.0000 AND ia_CRP <= 7.5000 AND ia_LacticAcid <= 3.5000 AND ia_Admission NC <= 2.5000 AND ia_Leucocytes <= 8.5000 AND ia_Leucocytes <= 5.5000 AND ia_ER Triage <= 1.5000 AND ia_CRP <= 6.5000 AND ia_CRP <= 4.5000 AND ia_Admission IC <= 1.5000 AND ia_Leucocytes <= 4.5000 AND ia_CRP > 3.5000 AND ia_LacticAcid <= 1.5000 AND ia_Leucocytes <= 3.5000 AND ia_IV Liquid > 0.5000 AND ia_Admission NC <= 1.5000
+    D35: ia_Release A > 0.5000 AND ia_Leucocytes > 2.5000 AND ia_LacticAcid > 0.5000 AND ia_IV Antibiotics > 0.5000 AND ia_CRP > 2.5000 AND ia_Leucocytes <= 16.0000 AND ia_CRP <= 7.5000 AND ia_LacticAcid <= 3.5000 AND ia_Admission NC <= 2.5000 AND ia_Leucocytes <= 8.5000 AND ia_Leucocytes <= 5.5000 AND ia_ER Triage <= 1.5000 AND ia_CRP <= 6.5000 AND ia_CRP <= 4.5000 AND ia_Admission IC <= 1.5000 AND ia_Leucocytes <= 4.5000 AND ia_CRP > 3.5000 AND ia_LacticAcid <= 1.5000 AND ia_Leucocytes <= 3.5000 AND ia_IV Liquid > 0.5000 AND ia_Admission NC > 1.5000
+    D36: ia_Release A > 0.5000 AND ia_Leucocytes > 2.5000 AND ia_LacticAcid > 0.5000 AND ia_IV Antibiotics > 0.5000 AND ia_CRP > 2.5000 AND ia_Leucocytes <= 16.0000 AND ia_CRP <= 7.5000 AND ia_LacticAcid <= 3.5000 AND ia_Admission NC <= 2.5000 AND ia_Leucocytes <= 8.5000 AND ia_Leucocytes <= 5.5000 AND ia_ER Triage <= 1.5000 AND ia_CRP <= 6.5000 AND ia_CRP <= 4.5000 AND ia_Admission IC <= 1.5000 AND ia_Leucocytes <= 4.5000 AND ia_CRP > 3.5000 AND ia_LacticAcid <= 1.5000 AND ia_Leucocytes > 3.5000 AND ia_IV Liquid <= 0.5000
+    D37: ia_Release A > 0.5000 AND ia_Leucocytes > 2.5000 AND ia_LacticAcid > 0.5000 AND ia_IV Antibiotics > 0.5000 AND ia_CRP > 2.5000 AND ia_Leucocytes <= 16.0000 AND ia_CRP <= 7.5000 AND ia_LacticAcid <= 3.5000 AND ia_Admission NC <= 2.5000 AND ia_Leucocytes <= 8.5000 AND ia_Leucocytes <= 5.5000 AND ia_ER Triage <= 1.5000 AND ia_CRP <= 6.5000 AND ia_CRP <= 4.5000 AND ia_Admission IC <= 1.5000 AND ia_Leucocytes <= 4.5000 AND ia_CRP > 3.5000 AND ia_LacticAcid > 1.5000 AND ia_Leucocytes > 3.5000 AND ia_Admission IC <= 0.5000 AND ia_Admission NC <= 1.5000
+    D38: ia_Release A > 0.5000 AND ia_Leucocytes > 2.5000 AND ia_LacticAcid > 0.5000 AND ia_IV Antibiotics > 0.5000 AND ia_CRP > 2.5000 AND ia_Leucocytes <= 16.0000 AND ia_CRP <= 7.5000 AND ia_LacticAcid <= 3.5000 AND ia_Admission NC <= 2.5000 AND ia_Leucocytes <= 8.5000 AND ia_Leucocytes <= 5.5000 AND ia_ER Triage <= 1.5000 AND ia_CRP <= 6.5000 AND ia_CRP <= 4.5000 AND ia_Admission IC <= 1.5000 AND ia_Leucocytes <= 4.5000 AND ia_CRP > 3.5000 AND ia_LacticAcid > 1.5000 AND ia_Leucocytes > 3.5000 AND ia_Admission IC <= 0.5000 AND ia_Admission NC > 1.5000
+    D39: ia_Release A > 0.5000 AND ia_Leucocytes > 2.5000 AND ia_LacticAcid > 0.5000 AND ia_IV Antibiotics > 0.5000 AND ia_CRP > 2.5000 AND ia_Leucocytes <= 16.0000 AND ia_CRP <= 7.5000 AND ia_LacticAcid <= 3.5000 AND ia_Admission NC <= 2.5000 AND ia_Leucocytes <= 8.5000 AND ia_Leucocytes <= 5.5000 AND ia_ER Triage <= 1.5000 AND ia_CRP <= 6.5000 AND ia_CRP <= 4.5000 AND ia_Admission IC <= 1.5000 AND ia_Leucocytes > 4.5000 AND ia_CRP <= 3.5000
+    D40: ia_Release A > 0.5000 AND ia_Leucocytes > 2.5000 AND ia_LacticAcid > 0.5000 AND ia_IV Antibiotics > 0.5000 AND ia_CRP > 2.5000 AND ia_Leucocytes <= 16.0000 AND ia_CRP <= 7.5000 AND ia_LacticAcid <= 3.5000 AND ia_Admission NC <= 2.5000 AND ia_Leucocytes <= 8.5000 AND ia_Leucocytes <= 5.5000 AND ia_ER Triage <= 1.5000 AND ia_CRP <= 6.5000 AND ia_CRP <= 4.5000 AND ia_Admission IC > 1.5000
+    D41: ia_Release A > 0.5000 AND ia_Leucocytes > 2.5000 AND ia_LacticAcid > 0.5000 AND ia_IV Antibiotics > 0.5000 AND ia_CRP > 2.5000 AND ia_Leucocytes <= 16.0000 AND ia_CRP <= 7.5000 AND ia_LacticAcid <= 3.5000 AND ia_Admission NC <= 2.5000 AND ia_Leucocytes <= 8.5000 AND ia_Leucocytes <= 5.5000 AND ia_ER Triage <= 1.5000 AND ia_CRP <= 6.5000 AND ia_CRP > 4.5000 AND ia_LacticAcid > 1.5000 AND ia_Admission NC <= 1.5000 AND ia_Leucocytes > 4.5000
+    D42: ia_Release A > 0.5000 AND ia_Leucocytes > 2.5000 AND ia_LacticAcid > 0.5000 AND ia_IV Antibiotics > 0.5000 AND ia_CRP > 2.5000 AND ia_Leucocytes <= 16.0000 AND ia_CRP <= 7.5000 AND ia_LacticAcid <= 3.5000 AND ia_Admission NC <= 2.5000 AND ia_Leucocytes <= 8.5000 AND ia_Leucocytes <= 5.5000 AND ia_ER Triage <= 1.5000 AND ia_CRP <= 6.5000 AND ia_CRP > 4.5000 AND ia_LacticAcid > 1.5000 AND ia_Admission NC > 1.5000 AND ia_Leucocytes <= 4.5000
+    D43: ia_Release A > 0.5000 AND ia_Leucocytes > 2.5000 AND ia_LacticAcid > 0.5000 AND ia_IV Antibiotics > 0.5000 AND ia_CRP > 2.5000 AND ia_Leucocytes <= 16.0000 AND ia_CRP <= 7.5000 AND ia_LacticAcid <= 3.5000 AND ia_Admission NC <= 2.5000 AND ia_Leucocytes <= 8.5000 AND ia_Leucocytes <= 5.5000 AND ia_ER Triage <= 1.5000 AND ia_CRP > 6.5000
+    D44: ia_Release A > 0.5000 AND ia_Leucocytes > 2.5000 AND ia_LacticAcid > 0.5000 AND ia_IV Antibiotics > 0.5000 AND ia_CRP > 2.5000 AND ia_Leucocytes <= 16.0000 AND ia_CRP <= 7.5000 AND ia_LacticAcid <= 3.5000 AND ia_Admission NC <= 2.5000 AND ia_Leucocytes <= 8.5000 AND ia_Leucocytes <= 5.5000 AND ia_ER Triage > 1.5000
+    D45: ia_Release A > 0.5000 AND ia_Leucocytes > 2.5000 AND ia_LacticAcid > 0.5000 AND ia_IV Antibiotics > 0.5000 AND ia_CRP > 2.5000 AND ia_Leucocytes <= 16.0000 AND ia_CRP <= 7.5000 AND ia_LacticAcid <= 3.5000 AND ia_Admission NC <= 2.5000 AND ia_Leucocytes <= 8.5000 AND ia_Leucocytes > 5.5000 AND ia_CRP <= 5.5000
+    D46: ia_Release A > 0.5000 AND ia_Leucocytes > 2.5000 AND ia_LacticAcid > 0.5000 AND ia_IV Antibiotics > 0.5000 AND ia_CRP > 2.5000 AND ia_Leucocytes <= 16.0000 AND ia_CRP <= 7.5000 AND ia_LacticAcid <= 3.5000 AND ia_Admission NC <= 2.5000 AND ia_Leucocytes <= 8.5000 AND ia_Leucocytes > 5.5000 AND ia_CRP > 5.5000 AND ia_Admission NC <= 1.5000 AND ia_LacticAcid <= 2.0000 AND ia_Leucocytes <= 6.5000
+    D47: ia_Release A > 0.5000 AND ia_Leucocytes > 2.5000 AND ia_LacticAcid > 0.5000 AND ia_IV Antibiotics > 0.5000 AND ia_CRP > 2.5000 AND ia_Leucocytes <= 16.0000 AND ia_CRP <= 7.5000 AND ia_LacticAcid <= 3.5000 AND ia_Admission NC <= 2.5000 AND ia_Leucocytes <= 8.5000 AND ia_Leucocytes > 5.5000 AND ia_CRP > 5.5000 AND ia_Admission NC <= 1.5000 AND ia_LacticAcid > 2.0000
+    D48: ia_Release A > 0.5000 AND ia_Leucocytes > 2.5000 AND ia_LacticAcid > 0.5000 AND ia_IV Antibiotics > 0.5000 AND ia_CRP > 2.5000 AND ia_Leucocytes <= 16.0000 AND ia_CRP <= 7.5000 AND ia_LacticAcid <= 3.5000 AND ia_Admission NC > 2.5000 AND ia_CRP <= 3.5000 AND ia_Admission NC > 3.5000
+    D49: ia_Release A > 0.5000 AND ia_Leucocytes > 2.5000 AND ia_LacticAcid > 0.5000 AND ia_IV Antibiotics > 0.5000 AND ia_CRP > 2.5000 AND ia_Leucocytes <= 16.0000 AND ia_CRP <= 7.5000 AND ia_LacticAcid > 3.5000 AND ia_Admission IC <= 1.5000 AND ia_Leucocytes <= 6.5000 AND ia_LacticAcid <= 5.5000 AND ia_LacticAcid <= 4.5000 AND ia_Admission NC > 0.5000 AND ia_IV Liquid > 0.5000 AND ia_Leucocytes > 3.5000 AND ia_Leucocytes <= 4.5000 AND ia_Admission NC <= 2.0000 AND ia_CRP <= 4.5000
+    D50: ia_Release A > 0.5000 AND ia_Leucocytes > 2.5000 AND ia_LacticAcid > 0.5000 AND ia_IV Antibiotics > 0.5000 AND ia_CRP > 2.5000 AND ia_Leucocytes <= 16.0000 AND ia_CRP <= 7.5000 AND ia_LacticAcid > 3.5000 AND ia_Admission IC <= 1.5000 AND ia_Leucocytes <= 6.5000 AND ia_LacticAcid <= 5.5000 AND ia_LacticAcid <= 4.5000 AND ia_Admission NC > 0.5000 AND ia_IV Liquid > 0.5000 AND ia_Leucocytes > 3.5000 AND ia_Leucocytes <= 4.5000 AND ia_Admission NC > 2.0000
+    D51: ia_Release A > 0.5000 AND ia_Leucocytes > 2.5000 AND ia_LacticAcid > 0.5000 AND ia_IV Antibiotics > 0.5000 AND ia_CRP > 2.5000 AND ia_Leucocytes <= 16.0000 AND ia_CRP <= 7.5000 AND ia_LacticAcid > 3.5000 AND ia_Admission IC <= 1.5000 AND ia_Leucocytes <= 6.5000 AND ia_LacticAcid <= 5.5000 AND ia_LacticAcid <= 4.5000 AND ia_Admission NC > 0.5000 AND ia_IV Liquid > 0.5000 AND ia_Leucocytes > 3.5000 AND ia_Leucocytes > 4.5000
+    D52: ia_Release A > 0.5000 AND ia_Leucocytes > 2.5000 AND ia_LacticAcid > 0.5000 AND ia_IV Antibiotics > 0.5000 AND ia_CRP > 2.5000 AND ia_Leucocytes <= 16.0000 AND ia_CRP <= 7.5000 AND ia_LacticAcid > 3.5000 AND ia_Admission IC <= 1.5000 AND ia_Leucocytes <= 6.5000 AND ia_LacticAcid <= 5.5000 AND ia_LacticAcid > 4.5000
+    D53: ia_Release A > 0.5000 AND ia_Leucocytes > 2.5000 AND ia_LacticAcid > 0.5000 AND ia_IV Antibiotics > 0.5000 AND ia_CRP > 2.5000 AND ia_Leucocytes <= 16.0000 AND ia_CRP <= 7.5000 AND ia_LacticAcid > 3.5000 AND ia_Admission IC <= 1.5000 AND ia_Leucocytes > 6.5000
+    D54: ia_Release A > 0.5000 AND ia_Leucocytes > 2.5000 AND ia_LacticAcid > 0.5000 AND ia_IV Antibiotics > 0.5000 AND ia_CRP > 2.5000 AND ia_Leucocytes <= 16.0000 AND ia_CRP > 7.5000 AND ia_Admission IC <= 1.5000 AND ia_LacticAcid <= 4.5000 AND ia_CRP <= 10.5000 AND ia_Leucocytes <= 12.0000 AND ia_Admission NC <= 3.0000 AND ia_LacticAcid <= 3.5000 AND ia_IV Liquid <= 0.5000 AND ia_Admission NC <= 1.5000
+    D55: ia_Release A > 0.5000 AND ia_Leucocytes > 2.5000 AND ia_LacticAcid > 0.5000 AND ia_IV Antibiotics > 0.5000 AND ia_CRP > 2.5000 AND ia_Leucocytes <= 16.0000 AND ia_CRP > 7.5000 AND ia_Admission IC <= 1.5000 AND ia_LacticAcid <= 4.5000 AND ia_CRP <= 10.5000 AND ia_Leucocytes <= 12.0000 AND ia_Admission NC <= 3.0000 AND ia_LacticAcid <= 3.5000 AND ia_IV Liquid > 0.5000 AND ia_Leucocytes <= 9.5000 AND ia_Leucocytes <= 7.5000 AND ia_Admission NC > 1.5000
+    D56: ia_Release A > 0.5000 AND ia_Leucocytes > 2.5000 AND ia_LacticAcid > 0.5000 AND ia_IV Antibiotics > 0.5000 AND ia_CRP > 2.5000 AND ia_Leucocytes <= 16.0000 AND ia_CRP > 7.5000 AND ia_Admission IC <= 1.5000 AND ia_LacticAcid <= 4.5000 AND ia_CRP <= 10.5000 AND ia_Leucocytes <= 12.0000 AND ia_Admission NC <= 3.0000 AND ia_LacticAcid <= 3.5000 AND ia_IV Liquid > 0.5000 AND ia_Leucocytes > 9.5000 AND ia_CRP <= 9.5000
+    D57: ia_Release A > 0.5000 AND ia_Leucocytes > 2.5000 AND ia_LacticAcid > 0.5000 AND ia_IV Antibiotics > 0.5000 AND ia_CRP > 2.5000 AND ia_Leucocytes <= 16.0000 AND ia_CRP > 7.5000 AND ia_Admission IC <= 1.5000 AND ia_LacticAcid <= 4.5000 AND ia_CRP <= 10.5000 AND ia_Leucocytes <= 12.0000 AND ia_Admission NC <= 3.0000 AND ia_LacticAcid <= 3.5000 AND ia_IV Liquid > 0.5000 AND ia_Leucocytes > 9.5000 AND ia_CRP > 9.5000 AND ia_Admission IC <= 0.5000 AND ia_Admission NC <= 1.5000
+    D58: ia_Release A > 0.5000 AND ia_Leucocytes > 2.5000 AND ia_LacticAcid > 0.5000 AND ia_IV Antibiotics > 0.5000 AND ia_CRP > 2.5000 AND ia_Leucocytes <= 16.0000 AND ia_CRP > 7.5000 AND ia_Admission IC <= 1.5000 AND ia_LacticAcid <= 4.5000 AND ia_CRP <= 10.5000 AND ia_Leucocytes <= 12.0000 AND ia_Admission NC <= 3.0000 AND ia_LacticAcid > 3.5000
+    D59: ia_Release A > 0.5000 AND ia_Leucocytes > 2.5000 AND ia_LacticAcid > 0.5000 AND ia_IV Antibiotics > 0.5000 AND ia_CRP > 2.5000 AND ia_Leucocytes <= 16.0000 AND ia_CRP > 7.5000 AND ia_Admission IC <= 1.5000 AND ia_LacticAcid <= 4.5000 AND ia_CRP <= 10.5000 AND ia_Leucocytes > 12.0000
+    D60: ia_Release A > 0.5000 AND ia_Leucocytes > 2.5000 AND ia_LacticAcid > 0.5000 AND ia_IV Antibiotics > 0.5000 AND ia_CRP > 2.5000 AND ia_Leucocytes <= 16.0000 AND ia_CRP > 7.5000 AND ia_Admission IC <= 1.5000 AND ia_LacticAcid <= 4.5000 AND ia_CRP > 10.5000
+    D61: ia_Release A > 0.5000 AND ia_Leucocytes > 2.5000 AND ia_LacticAcid > 0.5000 AND ia_IV Antibiotics > 0.5000 AND ia_CRP > 2.5000 AND ia_Leucocytes <= 16.0000 AND ia_CRP > 7.5000 AND ia_Admission IC <= 1.5000 AND ia_LacticAcid > 4.5000 AND ia_CRP <= 11.5000 AND ia_CRP <= 9.5000 AND ia_LacticAcid <= 7.5000 AND ia_LacticAcid <= 5.5000 AND ia_Admission NC <= 1.5000
+    D62: ia_Release A > 0.5000 AND ia_Leucocytes > 2.5000 AND ia_LacticAcid > 0.5000 AND ia_IV Antibiotics > 0.5000 AND ia_CRP > 2.5000 AND ia_Leucocytes <= 16.0000 AND ia_CRP > 7.5000 AND ia_Admission IC <= 1.5000 AND ia_LacticAcid > 4.5000 AND ia_CRP <= 11.5000 AND ia_CRP <= 9.5000 AND ia_LacticAcid > 7.5000
+    D63: ia_Release A > 0.5000 AND ia_Leucocytes > 2.5000 AND ia_LacticAcid > 0.5000 AND ia_IV Antibiotics > 0.5000 AND ia_CRP > 2.5000 AND ia_Leucocytes <= 16.0000 AND ia_CRP > 7.5000 AND ia_Admission IC <= 1.5000 AND ia_LacticAcid > 4.5000 AND ia_CRP > 11.5000 AND ia_LacticAcid <= 10.0000
+    D64: ia_Release A > 0.5000 AND ia_Leucocytes > 2.5000 AND ia_LacticAcid > 0.5000 AND ia_IV Antibiotics > 0.5000 AND ia_CRP > 2.5000 AND ia_Leucocytes <= 16.0000 AND ia_CRP > 7.5000 AND ia_Admission IC > 1.5000
+    D65: ia_Release A > 0.5000 AND ia_Leucocytes > 2.5000 AND ia_LacticAcid > 0.5000 AND ia_IV Antibiotics > 0.5000 AND ia_CRP > 2.5000 AND ia_Leucocytes > 16.0000 AND ia_Admission NC <= 1.5000 AND ia_LacticAcid > 7.0000
+    D66: ia_Release A > 0.5000 AND ia_Leucocytes > 2.5000 AND ia_LacticAcid > 0.5000 AND ia_IV Antibiotics > 0.5000 AND ia_CRP > 2.5000 AND ia_Leucocytes > 16.0000 AND ia_Admission NC > 1.5000 AND ia_LacticAcid <= 20.5000
+    D67: ia_Release A > 0.5000 AND ia_Leucocytes > 2.5000 AND ia_LacticAcid > 0.5000 AND ia_IV Antibiotics > 0.5000 AND ia_CRP > 2.5000 AND ia_Leucocytes > 16.0000 AND ia_Admission NC > 1.5000 AND ia_LacticAcid > 20.5000 AND ia_Admission NC <= 2.5000
+
+────────────────────────────────────────────────────────────────────────────────
+ENCODING: MR
+  Selected features (0): 
+  RipperK rules (0):
+  DecisionTree rules (0):
+
+────────────────────────────────────────────────────────────────────────────────
+ENCODING: TR
+  Selected features (1): tr_('CRP', 'Leucocytes')
+  RipperK rules (2):
+    R01: tr_('CRP', 'Leucocytes')=1.0
+    R02: tr_('CRP', 'Leucocytes')=3.0
+  DecisionTree rules (1):
+    D01: tr_('CRP', 'Leucocytes') > 0.5000 AND tr_('CRP', 'Leucocytes') <= 5.5000 AND tr_('CRP', 'Leucocytes') > 2.5000 AND tr_('CRP', 'Leucocytes') <= 3.5000
+
+────────────────────────────────────────────────────────────────────────────────
+ENCODING: MRA
+  Selected features (1): mra_frozenset({'LacticAcid', 'CRP', 'Leucocytes'})
+  RipperK rules (1):
+    R01: mra_frozenset({'LacticAcid', 'CRP', 'Leucocytes'})=6.2 - 12.4
+  DecisionTree rules (3):
+    D01: mra_frozenset({'LacticAcid', 'CRP', 'Leucocytes'}) > 1.0000 AND mra_frozenset({'LacticAcid', 'CRP', 'Leucocytes'}) <= 49.5000 AND mra_frozenset({'LacticAcid', 'CRP', 'Leucocytes'}) <= 14.0000 AND mra_frozenset({'LacticAcid', 'CRP', 'Leucocytes'}) > 6.5000 AND mra_frozenset({'LacticAcid', 'CRP', 'Leucocytes'}) <= 8.5000
+    D02: mra_frozenset({'LacticAcid', 'CRP', 'Leucocytes'}) > 1.0000 AND mra_frozenset({'LacticAcid', 'CRP', 'Leucocytes'}) <= 49.5000 AND mra_frozenset({'LacticAcid', 'CRP', 'Leucocytes'}) <= 14.0000 AND mra_frozenset({'LacticAcid', 'CRP', 'Leucocytes'}) > 6.5000 AND mra_frozenset({'LacticAcid', 'CRP', 'Leucocytes'}) > 8.5000
+    D03: mra_frozenset({'LacticAcid', 'CRP', 'Leucocytes'}) > 1.0000 AND mra_frozenset({'LacticAcid', 'CRP', 'Leucocytes'}) > 49.5000
+
+────────────────────────────────────────────────────────────────────────────────
+ENCODING: TRA
+  Selected features (0): 
+  RipperK rules (0):
+  DecisionTree rules (0):
+
+────────────────────────────────────────────────────────────────────────────────
+ENCODING: DECLARE
+  Selected features (36): precedence_(Admission NC_Release A), responded_existence_(Release A_Admission NC), alternate_precedence_(Admission NC_Release A), not_succession_(Release A_ER Registration), not_succession_(Release A_Admission IC), responded_existence_(Release A_ER Registration), not_succession_(Release A_ER Triage), responded_existence_(Release A_ER Triage), precedence_(ER Triage_Release A), not_succession_(Release A_IV Antibiotics) ...
+  RipperK rules (2):
+    R01: precedence_(Admission NC_Release A)=1.0 AND alternate_response_(ER Triage_Release A)=-1.0
+    R02: precedence_(Admission NC_Release A)=1.0
+  DecisionTree rules (2):
+    D01: precedence_(Admission NC_Release A) > 0.5000 AND choice_(Release A_ER Sepsis Triage) <= 0.0000 AND alternate_response_(ER Triage_Release A) <= 0.0000
+    D02: precedence_(Admission NC_Release A) > 0.5000 AND choice_(Release A_ER Sepsis Triage) > 0.0000
+
+────────────────────────────────────────────────────────────────────────────────
+ENCODING: H
+  Selected features (36): responded_existence_(Release A_Admission NC), precedence_(Admission NC_Release A), alternate_precedence_(Admission NC_Release A), not_succession_(Release A_Admission IC), precedence_(ER Triage_Release A), responded_existence_(Release A_ER Triage), not_succession_(Release A_ER Sepsis Triage), alternate_precedence_(ER Triage_Release A), not_succession_(Release A_ER Triage), not_succession_(Release A_Admission NC) ...
+  RipperK rules (2):
+    R01: responded_existence_(Release A_Admission NC)=1.0 AND alternate_response_(ER Triage_Release A)=-1.0
+    R02: responded_existence_(Release A_Admission NC)=1.0
+  DecisionTree rules (2):
+    D01: responded_existence_(Release A_Admission NC) > 0.5000 AND choice_(ER Sepsis Triage_Release A) <= 0.0000 AND alternate_response_(ER Triage_Release A) <= 0.0000
+    D02: responded_existence_(Release A_Admission NC) > 0.5000 AND choice_(ER Sepsis Triage_Release A) > 0.0000
+
+────────────────────────────────────────────────────────────────────────────────
+ENCODING: DATA
+  Selected features (190): last_org:group==?, _meta_trace_time_s, last_org:group==E, last_org:group==A, _meta_trace_length, count_lifecycle:transition_complete, last_org:group==B, min_Infusion, last_Infusion, max_Infusion ...
+  RipperK rules (1):
+    R01: last_org:group==?=1.0
+  DecisionTree rules (2):
+    D01: last_org:group==? <= 0.5000 AND count_lifecycle:transition_complete > 18.5000 AND last_org:group==B > 0.5000
+    D02: last_org:group==? > 0.5000
+
+────────────────────────────────────────────────────────────────────────────────
+ENCODING: DECLD
+  Selected features (36): declD_precedence_(Admission NC_Release A)_last_org:group==E <= 0.500, declD_responded_existence_(Release A_Admission NC)_last_org:group==E <= 0.500, declD_alternate_precedence_(Admission NC_Release A)_last_org:group==E <= 0.500, declD_not_succession_(Release A_ER Registration)_last_org:group==E <= 0.500, declD_not_succession_(Release A_Admission IC)_last_org:group==E <= 0.500, declD_responded_existence_(Release A_ER Registration)_last_org:group==E <= 0.500, declD_not_succession_(Release A_ER Triage)_last_org:group==E <= 0.500, declD_responded_existence_(Release A_ER Triage)_last_org:group==E <= 0.500, declD_precedence_(ER Triage_Release A)_last_org:group==E <= 0.500, declD_not_succession_(Release A_IV Antibiotics)_last_org:group==E <= 0.500 ...
+  RipperK rules (2):
+    R01: declD_precedence_(Admission NC_Release A)_last_org:group==E <= 0.500=1.0 AND declD_alternate_response_(ER Triage_Release A)_last_org:group==E <= 0.500=-1.0
+    R02: declD_precedence_(Admission NC_Release A)_last_org:group==E <= 0.500=1.0
+  DecisionTree rules (2):
+    D01: declD_precedence_(Admission NC_Release A)_last_org:group==E <= 0.500 > 0.5000 AND declD_choice_(Release A_ER Sepsis Triage)_last_org:group==? <= 0.500 <= 0.0000 AND declD_alternate_response_(ER Triage_Release A)_last_org:group==E <= 0.500 <= 0.0000
+    D02: declD_precedence_(Admission NC_Release A)_last_org:group==E <= 0.500 > 0.5000 AND declD_choice_(Release A_ER Sepsis Triage)_last_org:group==? <= 0.500 > 0.0000
+
+────────────────────────────────────────────────────────────────────────────────
+ENCODING: DATA+IA
+  Selected features (162): last_org:group==?, _meta_trace_time_s, last_org:group==E, ia_Release A, ia_Admission NC, last_org:group==A, count_lifecycle:transition_complete, _meta_trace_length, last_org:group==B, first_Infusion ...
+  RipperK rules (2):
+    R01: last_org:group==?=1.0
+    R02: last_Leucocytes=4.1 - 6.1 AND last_org:group==B=1.0 AND ia_Release A=1.0
+  DecisionTree rules (2):
+    D01: last_org:group==? <= 0.5000 AND count_lifecycle:transition_complete > 18.5000 AND last_org:group==B > 0.5000
+    D02: last_org:group==? > 0.5000
+
+────────────────────────────────────────────────────────────────────────────────
+ENCODING: DATA+MR
+  Selected features (190): last_org:group==?, _meta_trace_time_s, last_org:group==E, last_org:group==A, _meta_trace_length, count_lifecycle:transition_complete, last_org:group==B, min_Infusion, last_Infusion, max_Infusion ...
+  RipperK rules (1):
+    R01: last_org:group==?=1.0
+  DecisionTree rules (2):
+    D01: last_org:group==? <= 0.5000 AND count_lifecycle:transition_complete > 18.5000 AND last_org:group==B > 0.5000
+    D02: last_org:group==? > 0.5000
+
+────────────────────────────────────────────────────────────────────────────────
+ENCODING: DATA+TR
+  Selected features (191): last_org:group==?, _meta_trace_time_s, last_org:group==E, last_org:group==A, count_lifecycle:transition_complete, _meta_trace_length, last_org:group==B, last_Infusion, first_Infusion, max_Infusion ...
+  RipperK rules (2):
+    R01: last_org:group==?=1.0
+    R02: tr_('CRP', 'Leucocytes')=1.0 AND last_org:group==E=0.0
+  DecisionTree rules (2):
+    D01: last_org:group==? <= 0.5000 AND count_lifecycle:transition_complete > 18.5000 AND last_org:group==B > 0.5000
+    D02: last_org:group==? > 0.5000
+
+────────────────────────────────────────────────────────────────────────────────
+ENCODING: DATA+MRA
+  Selected features (191): last_org:group==?, _meta_trace_time_s, last_org:group==E, last_org:group==A, count_lifecycle:transition_complete, _meta_trace_length, last_org:group==B, last_Infusion, first_Infusion, max_Infusion ...
+  RipperK rules (1):
+    R01: last_org:group==?=1.0
+  DecisionTree rules (2):
+    D01: last_org:group==? <= 0.5000 AND count_lifecycle:transition_complete > 18.5000 AND last_org:group==B > 0.5000
+    D02: last_org:group==? > 0.5000
+
+────────────────────────────────────────────────────────────────────────────────
+ENCODING: DATA+TRA
+  Selected features (190): last_org:group==?, _meta_trace_time_s, last_org:group==E, last_org:group==A, _meta_trace_length, count_lifecycle:transition_complete, last_org:group==B, min_Infusion, last_Infusion, max_Infusion ...
+  RipperK rules (1):
+    R01: last_org:group==?=1.0
+  DecisionTree rules (2):
+    D01: last_org:group==? <= 0.5000 AND count_lifecycle:transition_complete > 18.5000 AND last_org:group==B > 0.5000
+    D02: last_org:group==? > 0.5000
+
+────────────────────────────────────────────────────────────────────────────────
+ENCODING: DATA+DECLARE
+  Selected features (38): last_org:group==?, _meta_trace_time_s, last_org:group==E, alternate_precedence_(Admission NC_Release A), precedence_(Admission NC_Release A), responded_existence_(Release A_Admission NC), not_succession_(Release A_ER Sepsis Triage), precedence_(ER Registration_Release A), not_succession_(Release A_ER Registration), not_succession_(Release A_IV Antibiotics) ...
+  RipperK rules (3):
+    R01: last_org:group==?=1.0
+    R02: _meta_trace_time_s=1125252.4 - 2500977.6 AND last_org:group==E=0.0
+    R03: _meta_trace_time_s=461319.0 - 690679.2 AND last_org:group==E=0.0
+  DecisionTree rules (3):
+    D01: last_org:group==? <= 0.5000 AND _meta_trace_time_s > 495017.5000 AND last_org:group==E <= 0.5000 AND _meta_trace_time_s <= 823378.0000
+    D02: last_org:group==? <= 0.5000 AND _meta_trace_time_s > 495017.5000 AND last_org:group==E <= 0.5000 AND _meta_trace_time_s > 823378.0000 AND _meta_trace_time_s > 1086736.5000
+    D03: last_org:group==? > 0.5000
+
+────────────────────────────────────────────────────────────────────────────────
+ENCODING: DATA+H
+  Selected features (38): last_org:group==?, _meta_trace_time_s, last_org:group==E, alternate_precedence_(Admission NC_Release A), precedence_(Admission NC_Release A), responded_existence_(Release A_Admission NC), alternate_precedence_(ER Triage_Release A), not_succession_(Release A_IV Antibiotics), responded_existence_(Release A_ER Triage), not_succession_(Release A_Admission NC) ...
+  RipperK rules (3):
+    R01: last_org:group==?=1.0
+    R02: _meta_trace_time_s=1125252.4 - 2500977.6 AND last_org:group==E=0.0
+    R03: _meta_trace_time_s=461319.0 - 690679.2 AND last_org:group==E=0.0
+  DecisionTree rules (3):
+    D01: last_org:group==? <= 0.5000 AND _meta_trace_time_s > 495017.5000 AND last_org:group==E <= 0.5000 AND _meta_trace_time_s <= 823378.0000
+    D02: last_org:group==? <= 0.5000 AND _meta_trace_time_s > 495017.5000 AND last_org:group==E <= 0.5000 AND _meta_trace_time_s > 823378.0000 AND _meta_trace_time_s > 1086736.5000
+    D03: last_org:group==? > 0.5000
+
+────────────────────────────────────────────────────────────────────────────────
+ENCODING: DATA+DECLD
+  Selected features (38): last_org:group==?, _meta_trace_time_s, last_org:group==E, declD_alternate_precedence_(Admission NC_Release A)_last_org:group==E <= 0.500, declD_precedence_(Admission NC_Release A)_last_org:group==E <= 0.500, declD_responded_existence_(Release A_Admission NC)_last_org:group==E <= 0.500, declD_not_succession_(Release A_ER Sepsis Triage)_last_org:group==E <= 0.500, declD_precedence_(ER Registration_Release A)_last_org:group==E <= 0.500, declD_not_succession_(Release A_ER Registration)_last_org:group==E <= 0.500, declD_not_succession_(Release A_IV Antibiotics)_last_org:group==E <= 0.500 ...
+  RipperK rules (3):
+    R01: last_org:group==?=1.0
+    R02: _meta_trace_time_s=1125252.4 - 2500977.6 AND last_org:group==E=0.0
+    R03: _meta_trace_time_s=461319.0 - 690679.2 AND last_org:group==E=0.0
+  DecisionTree rules (3):
+    D01: last_org:group==? <= 0.5000 AND _meta_trace_time_s > 495017.5000 AND last_org:group==E <= 0.5000 AND _meta_trace_time_s <= 823378.0000
+    D02: last_org:group==? <= 0.5000 AND _meta_trace_time_s > 495017.5000 AND last_org:group==E <= 0.5000 AND _meta_trace_time_s > 823378.0000 AND _meta_trace_time_s > 1086736.5000
+    D03: last_org:group==? > 0.5000
+
+────────────────────────────────────────────────────────────────────────────────
+ENCODING: H+DECLD
+  Selected features (40): declD_precedence_(Admission NC_Release A)_last_org:group==E <= 0.500, declD_responded_existence_(Release A_Admission NC)_last_org:group==E <= 0.500, alternate_precedence_(Admission NC_Release A), declD_alternate_precedence_(Admission NC_Release A)_last_org:group==E <= 0.500, responded_existence_(Release A_Admission NC), precedence_(Admission NC_Release A), declD_alternate_precedence_(ER Triage_Release A)_last_org:group==E <= 0.500, declD_not_succession_(Release A_ER Triage)_last_org:group==E <= 0.500, declD_responded_existence_(Release A_ER Triage)_last_org:group==E <= 0.500, declD_precedence_(ER Triage_Release A)_last_org:group==E <= 0.500 ...
+  RipperK rules (1):
+    R01: declD_precedence_(Admission NC_Release A)_last_org:group==E <= 0.500=1.0
+  DecisionTree rules (0):
+
+────────────────────────────────────────────────────────────────────────────────
+ENCODING: H+DATA+DECLD
+  Selected features (41): last_org:group==?, _meta_trace_time_s, last_org:group==E, precedence_(Admission NC_Release A), alternate_precedence_(Admission NC_Release A), declD_alternate_precedence_(Admission NC_Release A)_last_org:group==E <= 0.500, declD_precedence_(Admission NC_Release A)_last_org:group==E <= 0.500, responded_existence_(Release A_Admission NC), declD_responded_existence_(Release A_Admission NC)_last_org:group==E <= 0.500, alternate_precedence_(ER Registration_Release A) ...
+  RipperK rules (3):
+    R01: last_org:group==?=1.0
+    R02: _meta_trace_time_s=1125252.4 - 2500977.6 AND last_org:group==E=0.0
+    R03: _meta_trace_time_s=461319.0 - 690679.2 AND last_org:group==E=0.0
+  DecisionTree rules (3):
+    D01: last_org:group==? <= 0.5000 AND _meta_trace_time_s > 495017.5000 AND last_org:group==E <= 0.5000 AND _meta_trace_time_s <= 823378.0000
+    D02: last_org:group==? <= 0.5000 AND _meta_trace_time_s > 495017.5000 AND last_org:group==E <= 0.5000 AND _meta_trace_time_s > 823378.0000 AND _meta_trace_time_s > 1086736.5000
+    D03: last_org:group==? > 0.5000

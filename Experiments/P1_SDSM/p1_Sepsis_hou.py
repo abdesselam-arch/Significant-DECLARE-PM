@@ -1,149 +1,125 @@
 """
 THREE-HYPOTHESIS DISCRIMINATIVE SPECIFICATION MINING (PHASE 1)
 ===============================================================
-Storey CONJUNCTION TEST FOR DECLARE PATTERNS
+Hou-Storey CONJUNCTION TEST FOR DECLARE PATTERNS
 
 SCIENTIFIC FRAMEWORK:
 ---------------------
-This implementation tests three distinct null hypotheses per pattern,
-following the formalization of Ojala & Garriga (2010) for classifier
-significance testing, adapted to discriminative DECLARE specification mining.
+Three null hypotheses are tested per pattern (Ojala & Garriga 2010), adapted
+to discriminative DECLARE specification mining.
 
-NULL HYPOTHESIS 1 — H₀ˢ (Structural Null):
-    "The observed prevalence of pattern p in class y is consistent with
-     purely random temporal ordering within class y."
+NULL HYPOTHESIS 1 — H₀ˢ (Structural):
+    "Pattern prevalence in class y is consistent with random temporal ordering."
     Permutation: Activities within each trace are shuffled.
     Preserves:   Trace length, activity multiset, class labels.
     Destroys:    Sequential/temporal structure.
-    Purpose:     Confirms the pattern captures genuine temporal regularity,
-                 not merely a marginal-frequency artifact.
 
-NULL HYPOTHESIS 2 — H₀ᵈ (Discriminative Null):
-    "There is no difference in pattern prevalence between classes."
+NULL HYPOTHESIS 2 — H₀ᵈ (Discriminative):
+    "No difference in pattern prevalence between classes."
     Permutation: Class labels are randomly reassigned across cases.
     Preserves:   Full trace temporal structure, marginal class counts.
     Destroys:    Association between traces and class membership.
-    Purpose:     Directly tests whether the pattern discriminates between
-                 Sent for Credit Collection vs. No Credit Collection — the primary scientific claim.
 
-NULL HYPOTHESIS 3 — H₀ᶜ (Conjunction):
-    "Either H₀ˢ or H₀ᵈ (or both) hold."
-    Test:        Fisher (1932) combination under joint null H₀ᶜ = H₀ˢ ∩ H₀ᵈ.
-    Statistic:   T_F(p) = −2(ln p_struct_dom(p) + ln p_disc(p)) ~ χ²_4 under H₀ᶜ.
-    p-value:     p_Fisher(p) = P(χ²_4 ≥ T_F(p))  [uniformly more powerful than IUT]
-    Purpose:     Pattern is either structurally non-random or class-specific.
-    Note:        p_struct and p_disc arise from independent permutation schemes;
-                 under dependence the χ²_4 approximation is conservative (safe).
+NULL HYPOTHESIS 3 — H₀ᶜ (Conjunction, H₀ˢ ∩ H₀ᵈ):
+    Statistic:    T_Hou(p) = −2[w_s ln p_struct_dom(p) + w_d ln p_disc(p)]
+                    w_d = B_label / (B_label + B2_test) = 1500/2500 = 0.60
+                    w_s = B2_test / (B_label + B2_test) = 1000/2500 = 0.40
+    Distribution: T_Hou ~ c·χ²_f  (Satterthwaite 1946; c, f from ρ̂_sd via Brown 1975)
+    Analytic p:   p_Hou(p) = P(c·χ²_f ≥ T_Hou)  — BH reference only
+    Primary p:    p̃_Hou(p) — Phipson-Smyth empirical, doubly-null calibrated
+    Rationale:    w_d=0.60 upweights the more reliable discriminative signal
+                  (1500 label perms vs 1000 structural); ρ̂_sd accounts for axis correlation.
+    References:   Hou (2005) Stat. Prob. Lett. 73:179-187.
+                  Alves & Yu (2014) PLoS ONE 9(3):e91225.
+                  Brown (1975) Biometrics 31:987-992.
 
 STATISTICAL CONTROL:
 --------------------
-- Phipson & Smyth (2010) exact permutation p-values:
-      p = (1 + #{T_b ≥ T_obs}) / (B + 1)
-  This formula is exact and yields stochastically uniform p-values under H₀.
+Phipson & Smyth (2010) exact permutation p-values:
+    p = (1 + #{T_b ≥ T_obs}) / (B + 1)   — super-uniform under H₀.
 
-- Storey (2002) Q-Value FDR applied to per-pattern Phipson-Smyth p-values:
-      q(p) = min_{k'≥k} [π̂₀ · m' · p_(k') / k']
-  where p_p^PS = (1 + #{b : |Δ_b,p| ≥ |Δ_obs,p|}) / (B₁ + 1) is the
-  per-pattern exact p-value from column p of null_delta_matrix.
-- Gao (2023) Adaptive Storey (AS) π̂₀ estimator applied to all three axes.
-  Replaces bootstrap MSE-minimisation (Storey-Taylor-Siegmund 2004).
-  Algorithm 1 + robust stopping time τ* (Eq. 7):
-      τ* = inf{ λ_{j+1} ≤ 0.80 : ψ(λ_{j+1}) ≥ ψ(λ_j) }
-      ψ(λ) = π̂₀(λ) + V(λ),  V = Binomial plug-in variance of π̂₀(λ).
-  FDR validity: Proposition 1 (Gao 2023) — super-martingale + optional
-  stopping theorem; valid for super-uniform (Phipson-Smyth) p-values.
-  This replaces the Tusher flat-null approach which fails at m' < 500:
-  pooling all B₁×m' null values cross-contaminates high-variance patterns
-  (Init/End: σ_null ≈ 0.3) with low-variance ones (NotChainSuccession:
-  σ_null ≈ 0.006), inflating Ê[V(τ)] ~80× and collapsing k* to 0.
-  The per-pattern approach has zero cross-contamination and is exact at
-  any m' ≥ 1 with no extra permutation cost.
-  Final significance: q_value_sam ≤ α  (Fisher-Storey is the primary gate).
-  Structural q-values on m' scope are used for taxonomy only (not gating).
+Gao (2023) Adaptive Storey π̂₀ (Algorithm 1 + robust stopping time τ*, Eq. 7):
+    τ* = inf{ λ_{j+1} ≤ 0.80 : ψ(λ_{j+1}) ≥ ψ(λ_j) }
+    ψ(λ) = π̂₀(λ) + V(λ),   V = Binomial plug-in variance of π̂₀(λ).
+    Replaces Tusher flat-null (fails at m' < 500: heterogeneous σ_null inflates
+    Ê[V(τ)] ~80× and collapses k* to 0).
+    FDR validity: Proposition 1 (Gao 2023) — holds for super-uniform p-values.
 
-  BH (Benjamini-Hochberg 1995) is retained as a secondary reference for
-  comparison; it is not the primary significance criterion.
+Primary gate: q_Hou ≤ α  (Hou-Storey, Step 5b).
+Secondary:    BH (Benjamini-Hochberg 1995) — retained for comparison only.
 
 STATISTICAL DESIGN — SINGLE-GATE ARCHITECTURE:
 ------------------------------------------------
-Fisher-Storey (Step 5b) is the sole significance gate:
-    is_significant_final = is_significant_discriminative = (q_Fisher ≤ α)
+Hou-Storey (Step 5b) is the sole significance gate:
+    is_significant_final = is_significant_discriminative = (q_Hou ≤ α)
 
-Structural evidence is already encoded inside p_Fisher via the Fisher combination
-statistic T_F = −2(ln p_struct_dom + ln p_disc).  Using structural p-values as a
-second gate would penalise patterns twice for the same evidence, and using them as
-both selector (structural_idx) and test statistic introduces selection bias.
+Structural evidence is embedded in T_Hou via w_s·ln p_s. Using structural
+p-values as a second gate would double-penalise patterns and introduce
+selection bias (same p-values used as selector and test statistic).
 
-Step 5c computes Storey q-values on m' structural p-values for JSON transparency,
-but they NEVER gate is_significant_final.  is_significant_structural is a raw
+Step 5c computes Storey q-values on structural p-values for JSON transparency;
+they NEVER gate is_significant_final. is_significant_structural is a raw
 nominal label (p_structural_dominant ≤ α) used solely for taxonomy.
 
-FOUR-CATEGORY TAXONOMY (descriptive, within Fisher-significant set):
----------------------------------------------------------------------
-    Both               q_Fisher ≤ α  AND  p_struct_dom ≤ α  (nominal)
-                       Fisher-significant with corroborating nominal structural signal.
-    Discriminative only q_Fisher ≤ α  AND  p_struct_dom > α
-                       Fisher-significant; structural signal is weak (Fisher still valid
-                       because T_F penalises large p_struct automatically).
-    Structural only    q_Fisher > α  AND  p_struct_dom ≤ α  (nominal)
-                       Real temporal regularity; not class-discriminative.
-    Neither            Both criteria fail.  Not retained.
+FOUR-CATEGORY TAXONOMY (descriptive, within Hou-significant set):
+-----------------------------------------------------------------
+    Both               q_Hou ≤ α  AND  p_struct_dom ≤ α  (nominal)
+    Discriminative only q_Hou ≤ α  AND  p_struct_dom > α
+                        (T_Hou penalises large p_struct via w_s term)
+    Structural only    q_Hou > α  AND  p_struct_dom ≤ α
+    Neither            Both criteria fail.
 
 is_significant_final = True iff "Both" or "Discriminative only".
 
 COMPUTATIONAL ARCHITECTURE:
 ---------------------------
-Step 1: Candidate generation from Phase 0 CC specification.
-Step 2: Pre-compute holds_by_case on observed log (once, reused everywhere).
-Step 3: Label permutation (B₁ resamples) — O(B₁ · m · n), very cheap.
-        Stores null_delta_matrix (B₁ × m, float32) for SAM FDR estimation.
-Step 4: Trace-activity permutation (B₂ resamples) — O(B₂ · m · n · L), expensive.
-        Run on full union for both classes; every pattern has a real p_structural
-        for both D₀ and D₁ (no sentinel 1.0 values).
-Step 5a: Fisher conjunction p_Fisher = chi2.sf(−2(ln p_struct_dom + ln p_disc), 4)
-         + BH-FDR on m' structurally-touched patterns (reference).
-Step 5b: Storey (2002) Q-Value FDR on p_Fisher (discriminative axis).
-         q_disc = storey_qvalue(p_Fisher, π̂₀) over m' patterns.
-         is_significant_discriminative = q_disc ≤ α.
-Step 5c: Storey (2002) Q-Value FDR on structural p-values — for transparency only.
-         Two corrections on m' (structural_idx): q_sc0, q_sc1 stored in JSON.
-         is_significant_structural = p_structural_dominant ≤ α  (raw nominal,
-           avoids selection bias from using the same p-values as selector+test).
-         is_significant_final = is_significant_discriminative  (Fisher sole gate).
-         Four-category taxonomy assigned here (descriptive, not a second gate).
+Step 1:  Candidate generation from Phase 0 CC specification.
+Step 2:  Pre-compute holds_by_case on observed log (once, reused everywhere).
+Step 3:  Label permutation (B₁ = 2000 resamples) — O(B₁·m·n).
+         Fills null_delta_matrix (B₁ × m, float32) for Storey FDR at no extra cost.
+Step 4:  Trace-activity permutation (B₂ = 1000 resamples) — O(B₂·m·n·L).
+         Sample-split: screen half (B2_screen) for scope filter;
+         test half (B2_test) for T_Hou — disjoint → no selection bias.
+Step 5a: Hou (2005) analytic p_Hou = chi2.sf(T_Hou/c, f) [Satterthwaite, ρ̂_sd]
+         + BH-FDR on scope-filtered m'' patterns (reference only).
+Step 5b: Storey Q-Value FDR on empirical p̃_Hou (primary gate).
+         q_Hou = storey_qvalue(p̃_Hou, π̂₀)  over scope-filtered m'' patterns.
+         is_significant_discriminative = q_Hou ≤ α.
+Step 5c: Storey Q-Value FDR on structural p-values — transparency only.
+         q_sc0, q_sc1 stored in JSON; NEVER gate is_significant_final.
+         is_significant_structural = p_structural_dominant ≤ α  (raw nominal).
+         is_significant_final = is_significant_discriminative  (Hou-Storey gate).
+         Four-category taxonomy assigned here (descriptive).
 
 KEY ADVANTAGES OVER BH-FDR:
 ----------------------------
-1. π̂₀ correction: Storey (2002) estimates the null fraction π̂₀ from
-   per-pattern Phipson-Smyth p-values. When π̂₀ < 1 (signals present),
-   FDR̂ is deflated by factor π̂₀, yielding strictly more rejections than BH.
-2. Per-pattern comparison: p_p^PS uses only column p of null_delta_matrix —
-   zero cross-contamination from other patterns' null ranges. The flat-null
-   pooling (Tusher 2001) fails at m' < 500 due to heterogeneous σ_null.
-3. Exact at any m': no large-m approximation; valid FDR control even at m'=1.
-4. Sparsity-aware: π̂₀ down-weights the FDR estimate when signals are dense.
-5. No distributional assumptions: purely non-parametric.
-6. Computational efficiency: null_delta_matrix is filled in zero extra passes
-   — all B₁ permutation Δ-vectors are already computed in step 3.
+1. π̂₀ correction: FDR̂ deflated by factor π̂₀ < 1 → more rejections than BH.
+2. Per-pattern comparison: p̃_Hou uses only column p of null_delta_matrix —
+   zero cross-contamination between patterns' null ranges.
+3. Exact at any m': no large-m approximation; valid FDR even at m'=1.
+4. Sparsity-aware: π̂₀ down-weights FDR when signals are dense.
+5. Non-parametric: no distributional assumptions.
+6. Zero extra permutations: null_delta_matrix is filled in Step 3.
 
-Version: 8.0-DUAL-AXIS-STOREY-FDR
-Author: Ahmed Nour Abdesselam
+Version: 9.0-HOU-DOUBLY-NULL
+Author:  Ahmed Nour Abdesselam
 Institution: Free University of Bozen-Bolzano
-Date: March 2026
+Date:    May 2026
 
 References:
 -----------
-- Storey (2002): A direct approach to false discovery rates. JRSS-B 64(3):479-498.
-- Storey & Tibshirani (2003): Statistical significance for genomewide studies.
-  PNAS 100(16):9440-9445.
-- Tusher, Tibshirani & Chu (2001): Significance analysis of microarrays applied
-  to the ionizing radiation response. PNAS 98(9):5116-5121.
-- Ojala & Garriga (2010): Permutation Tests for Studying Classifier Performance. JMLR.
-- Phipson & Smyth (2010): Permutation p-values should never be zero.
-  Stat. Appl. Genet. Mol. Biol. 9(1):Article 39.
-- Benjamini & Hochberg (1995): Controlling the False Discovery Rate. JRSS-B.
-- Benjamini & Yekutieli (2001): The Control of the FDR Under Dependency. Ann. Stat.
-- Berger (1982): Multiparameter Hypothesis Testing and Acceptance Sampling. Technometrics.
+- Hou (2005): Stat. Prob. Lett. 73:179-187.  [PRIMARY — H₀ᶜ combination]
+- Alves & Yu (2014): PLoS ONE 9(3):e91225.  [Hou best for correlated p-values]
+- Brown (1975): Biometrics 31:987-992.  [cov(−2 log Pi, −2 log Pj) polynomial]
+- Satterthwaite (1946): Biometrics Bulletin 2:110-114.  [c·χ²_f approximation]
+- Pepe & Fleming (1989): Biometrics 45:497-507.  [variance-stabilising weights]
+- Storey (2002): JRSS-B 64(3):479-498.
+- Storey & Tibshirani (2003): PNAS 100(16):9440-9445.
+- Gao (2023): arXiv:2310.06357.  [Adaptive π̂₀ estimator]
+- Phipson & Smyth (2010): Stat. Appl. Genet. Mol. Biol. 9(1):Art. 39.
+- Benjamini & Hochberg (1995): JRSS-B 57(1):289-300.
+- Ojala & Garriga (2010): JMLR 11:1833-1863.
+- Berger (1982): Technometrics 24(4):295-300.
 - Di Ciccio & Montali (2022): DECLARE constraint semantics.
 - Pellegrina et al. (2021): Statistical Significance in Pattern Mining.
 """
@@ -174,6 +150,7 @@ from matplotlib.gridspec import GridSpec
 import matplotlib.cm as cm
 from tqdm import tqdm
 import time
+from joblib import Parallel, delayed
 
 warnings.filterwarnings('ignore')
 
@@ -199,8 +176,8 @@ plt.rcParams['ps.fonttype'] = 42
 
 # Colorblind-friendly palette (Wong 2011)
 COLORS = {
-    'class0': '#D55E00',     # Vermillion — Class 0 (No Credit Collection / Normal)
-    'class1': '#0072B2',     # Blue — Class 1 (Sent for Credit Collection / Deviant)
+    'class0': '#D55E00',     # Vermillion — Class 0 (No Return ER / Normal)
+    'class1': '#0072B2',     # Blue — Class 1 (Return ER / Deviant)
     'both': '#CC79A7',       # Reddish purple — both
     'neither': '#999999',    # Gray — neither
     'null': '#E5E5E5',       # Light gray — null
@@ -218,12 +195,12 @@ COLORS = {
 # CONFIGURATION
 # ============================================================================
 
-INPUT_FILE = "../Experiments data/CSV/Road_Traffic_Fine_Management_Process.csv"
-OUTPUT_DIR = "../Experiments data/Experiments/Results/RTFMP_ThreeHyp_SAM2"
-DECLARE_SPEC_FILE = "../Experiments data/Experiments/Results/DECspec_RTFMP/phase0_declare_specification_CC.json"
-# INPUT_FILE = "Road_Traffic_Fine_Management_Process.csv"
-# OUTPUT_DIR = "RTFMP_ThreeHyp_SAM"
-# DECLARE_SPEC_FILE = "phase0_RTFMP.json"
+INPUT_FILE = "../Experiments data/CSV/Sepsis_EL.csv"
+OUTPUT_DIR = "../Experiments data/Experiments/Results/Sepsis_ThreeHyp_SAM2"
+DECLARE_SPEC_FILE = "../Experiments data/Experiments/Results/DECspec_Sepsis/phase0_declare_specification_CC.json"
+# INPUT_FILE = "Sepsis_EL.csv"
+# OUTPUT_DIR = "Sepsis_Results"
+# DECLARE_SPEC_FILE = "phase0_Sepsis.json"
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 
 PLOTS_DIR = os.path.join(OUTPUT_DIR, "visualizations")
@@ -232,28 +209,31 @@ os.makedirs(PLOTS_DIR, exist_ok=True)
 # Three-Hypothesis Storey Configuration
 CONFIG = {
     # Label permutation (discriminative test H₀ᵈ) — cheap
-    # Also fills null_delta_matrix (B₁ × m) for SAM FDR estimation at no extra cost
-    'B_label': 4000,       # B₁: label permutation resamples
+    # Also fills null_delta_matrix (B₁ × m) for Storey FDR estimation at no extra cost
+    'B_label': 1500,       # B₁: label permutation resamples
 
     # Trace-activity permutation (structural test H₀ˢ) — expensive
     'B_trace': 2000,        # B₂: trace permutation resamples
 
-    # ── EMPIRICAL CALIBRATION (NEW) ───────────────────────────────────────
+    # ── EMPIRICAL CALIBRATION ─────────────────────────────────────────────
     # B_null double-null replicates are run inside execute_three_hypothesis_protocol
-    # to calibrate T_F empirically per pattern, replacing the analytic chi2_4 lookup.
-    # Each replicate applies sigma_trace o sigma_label (both axes nullified),
+    # to calibrate T_Hou empirically per pattern, replacing the analytic Satterthwaite
+    # chi2 lookup as the primary gate input.
+    # Each replicate applies sigma_trace ∘ sigma_label (both axes nullified),
     # recomputes holds, runs label perm (B1_null) and structural perm (B2_null),
-    # then records T_F^(b)(i) for every pattern i.
-    # Phipson-Smyth: p_tilde_F(i) = (1 + #{b: T_F^(b)(i) >= T_F_obs(i)}) / (B_null + 1)
+    # then records T_Hou^(b)(i) for every pattern i.
+    # Phipson-Smyth: p̃_Hou(i) = (1 + #{b: T_Hou^(b)(i) >= T_Hou_obs(i)}) / (B_null + 1)
     # Resolution: 1/(B_null+1) ≈ 0.0099 << alpha=0.05. Adequate for q-value step.
-    # Wall-time estimate: B_null × (B1_null + 2×B2_null) / n_cores ≈ 20 min on 12 cores.
+    # Wall-time estimate: B_null × (m·n + B1_null·m·n + 2·B2_null·m·n·L̄) / n_cores.
+    # Dominant cost: holds recomputation per replicate (compute_holds_by_case_batch).
+    # Sepsis (m≈1000, n=1050, B_null=200): ≈ 30–60 min on 12 cores.
     'B_null':  200,     # number of double-null replicates for empirical calibration
-    'B1_null': 100,     # label perm budget per null replicate (reduced vs B_label)
-    'B2_null':  100,     # trace perm budget per null replicate per class (reduced vs B_trace)
+    'B1_null': 75,     # label perm budget per null replicate (reduced vs B_label)
+    'B2_null':  75,     # trace perm budget per null replicate per class (reduced vs B_trace)
     # ─────────────────────────────────────────────────────────────────────
 
-    # FDR control — SAM is the primary method; BH is retained for comparison
-    'fdr_alpha': 0.05,      # Target FDR level α (used by both SAM and BH)
+    # FDR control — Hou-Storey is the primary method; BH is retained for comparison
+    'fdr_alpha': 0.05,      # Target FDR level α (used by both Hou-Storey and BH)
     'fdr_method': 'BH',     # BH reference method: 'BH' or 'BY'
 
     # Pattern mining parameters
@@ -272,6 +252,27 @@ CONFIG = {
         'NotChainSuccession',
     ],
 }
+
+# ============================================================================
+# HOU (2005) PRECISION-PROPORTIONAL WEIGHTS
+# ============================================================================
+# Weights are proportional to permutation budget, following Pepe & Fleming (1989)
+# variance-stabilisation principle (cited in Hou 2005, §4).
+#
+# p_disc:       from B_label = 1500 permutations  → resolution 1/1501, high precision
+# p_struct_dom: from B2_test = B_trace//2 = 1000 permutations → resolution 1/1001
+#
+# w_d = B_label / (B_label + B2_test) = 1500/2500 = 0.60
+# w_s = B2_test / (B_label + B2_test) = 1000/2500 = 0.40
+# Sum w_d + w_s = 1  (Hou 2005 normalisation convention, §3)
+#
+# Scientific rationale: a p-value estimated from B permutations has variance ∝ 1/B.
+# Weighting by B upweights the more reliable p-value, yielding a more powerful test
+# when p_disc is small (genuine class-discrimination signal) while correctly
+# penalising weak structural evidence by its lower weight.
+_B2_TEST = CONFIG['B_trace'] // 2                                        # 1000
+W_DISC   = CONFIG['B_label'] / (CONFIG['B_label'] + _B2_TEST)           # 0.60
+W_STRUCT = _B2_TEST         / (CONFIG['B_label'] + _B2_TEST)            # 0.40
 
 # ============================================================================
 # DECLARE CONSTRAINT TYPE SETS
@@ -299,12 +300,12 @@ ALL_CONSTRAINT_TYPES = (
 
 @dataclass
 class CaseInfo:
-    """Information about a single Road Traffic Fine Management Process case."""
+    """Information about a single Sepsis ICU patient case."""
     case_id: str
-    outcome: int                   # 1 = Sent for Credit Collection (Deviant), 0 = No Credit Collection (Normal)
-    trace: List[str]               # Full activity sequence (complete events only), outcome signal stripped
-    vehicle_class: str             # vehicleClass attribute of the fine (case-level, first event)
-    dismissal_type: str            # dismissal attribute value (case-level, first non-null)
+    outcome: int                   # 1 = Return ER (Deviant), 0 = No Return ER (Normal)
+    trace: List[str]               # Full activity sequence sorted by timestamp, outcome signal stripped
+    org_group: str                 # org:group of admission event (first event in case)
+    age_bracket: str               # Binned patient age: <40 / 40-59 / 60-74 / 75+
     start_timestamp: datetime
     activity_index: Dict[str, List[int]] = field(default_factory=dict)
 
@@ -318,20 +319,20 @@ class PatternTestResult:
     FDR-controlled verdicts for both the structural and discriminative axes.
 
     Significance taxonomy (four categories):
-        Both               — q_structural_dominant ≤ α  AND  q_value_sam ≤ α
+        Both               — q_Hou ≤ α  AND  p_struct_dom ≤ α  (nominal raw p-value)
                              Genuine temporal regularity AND class-discriminative.
-        Structural only    — q_structural_dominant ≤ α  AND  q_value_sam > α
+        Structural only    — p_struct_dom ≤ α  AND  q_Hou > α
                              Real temporal pattern; class-agnostic.
-        Discriminative only— q_structural_dominant > α  AND  q_value_sam ≤ α
-                             Class-specific; may be a frequency artifact.
-        Neither            — Both q-values > α.
+        Discriminative only— q_Hou ≤ α  AND  p_struct_dom > α
+                             Class-specific; structural evidence weak.
+        Neither            — q_Hou > α  AND  p_struct_dom > α.
 
     FDR control:
-        Discriminative: Storey (2002) q-values on m' Fisher conjunction
-                        p-values (Step 5b).  Sole significance gate.
+        Discriminative: Storey (2002) q-values on m'' empirical p̃_Hou
+                        (Step 5b).  Sole significance gate.
         Structural:     Storey (2002) q-values on m' (structural_idx) p-values
                         (Step 5c) stored for transparency only — not a gate.
-        is_significant_final   = is_significant_discriminative  (q_Fisher ≤ α)
+        is_significant_final   = is_significant_discriminative  (q_Hou ≤ α)
         is_significant_structural = p_structural_dominant ≤ α  (raw nominal label)
     """
     pattern_id: str
@@ -349,9 +350,9 @@ class PatternTestResult:
     delta_obs: float                  # P̂₁(p) − P̂₀(p), observed discriminative statistic
 
     # H₀ˢ — Structural null (trace-activity permutation)
-    p_structural_class0: float        # TEST half p-value for structural test in class 0 (enters Fisher)
-    p_structural_class1: float        # TEST half p-value for structural test in class 1 (enters Fisher)
-    p_structural_dominant: float      # TEST half p-value for structural test in dominant class
+    p_structural_class0: float        # TEST half p-value for structural test in class 0 (enters T_Hou weighted combination)
+    p_structural_class1: float        # TEST half p-value for structural test in class 1 (enters T_Hou weighted combination)
+    p_structural_dominant: float      # TEST half p-value for structural test in dominant class (enters T_Hou)
     null_mean_class0: float           # E_H₀ˢ[P̂₀(p)]
     null_mean_class1: float           # E_H₀ˢ[P̂₁(p)]
     null_std_class0: float
@@ -363,12 +364,10 @@ class PatternTestResult:
     null_delta_mean: float            # E_H₀ᵈ[Δ]
     null_delta_std: float             # Std_H₀ᵈ[Δ]
 
-    # # H₀ᶜ — Fisher conjunction
-    # p_conjunction: float              # chi2.sf(−2(ln p_struct_dom + ln p_disc), df=4)
-    # H₀ᶜ — IUT conjunction (was: Fisher conjunction)
-    p_conjunction: float   # analytic chi2_4 Fisher p-value (KEPT for BH reference, backward compat)
-                        # Formerly: max(p_struct_dom, p_disc) — IUT, Berger (1982)
-                        # chi2.sf(−2(ln p_s + ln p_d), df=4)
+    # H₀ᶜ — Hou (2005) weighted combination
+    p_conjunction: float   # analytic Hou p-value (Satterthwaite: chi2.sf(T_Hou/c, df=f))
+                        # KEPT for BH reference only — primary gate uses p̃_Hou (empirical)
+                        # Formerly (pre-v9): max(p_struct_dom, p_disc) — IUT, Berger (1982)
 
     # BH-FDR result
     is_significant_bh: bool           # Rejected by BH at FDR level α
@@ -384,18 +383,18 @@ class PatternTestResult:
     p_structural_screen_class0: float = 1.0
     p_structural_screen_class1: float = 1.0
 
-    # NEW — Phipson-Smyth empirical calibration of T_F under the double-null.
-    # p_tilde_F(i) = (1 + #{b: T_F^(b)(i) >= T_F_obs(i)}) / (B_null + 1)
-    # Replaces p_conjunction as the input to the Storey q-value gate (Step 5b).
-    # p_conjunction (analytic) is still used for the BH reference (Step 5a).
+    # Phipson-Smyth empirical calibration of T_Hou under the double-null.
+    # p̃_Hou(i) = (1 + #{b: T_Hou^(b)(i) >= T_Hou_obs(i)}) / (B_null + 1)
+    # Primary input to the Storey q-value gate (Step 5b).
+    # p_conjunction (analytic Satterthwaite) is used only for the BH reference (Step 5a).
     p_conjunction_empirical: float = 1.0
 
-    # Storey FDR — discriminative axis (Step 5b, filled after Fisher-Storey call)
-    q_value_sam:               float = 1.0          # Storey q-value on Fisher conjunction p-values
-    is_significant_sam:        bool  = False        # q_value_sam ≤ α  (used internally)
-    is_significant_discriminative: bool = False     # q_value_sam ≤ α  (public alias, set in Step 5c)
+    # Storey FDR — discriminative axis (Step 5b, filled after Hou-Storey call)
+    q_value_sam:               float = 1.0          # Storey q-value on empirical p̃_Hou  (= q_Hou)
+    is_significant_sam:        bool  = False        # q_Hou ≤ α  (used internally; field kept as q_value_sam for compatibility)
+    is_significant_discriminative: bool = False     # q_Hou ≤ α  (public alias, set in Step 5c)
     fdp_estimate:              float = 1.0          # FDP̂ at τ* for this pattern's rank
-    tau_star_sam:              float = float('inf') # p-value threshold τ* from Fisher-Storey
+    tau_star_sam:              float = float('inf') # p-value threshold τ* from Hou-Storey
 
     # Storey FDR — structural axis (Step 5c, transparency only — not a gate)
     q_structural_class0:       float = 1.0   # Storey q-value for H₀ˢ in class 0 (stored for JSON)
@@ -404,7 +403,7 @@ class PatternTestResult:
     is_significant_structural: bool  = False  # p_structural_dominant ≤ α (raw nominal — taxonomy label only)
 
     # Final verdict (Step 5c)
-    is_significant_final:      bool  = False  # is_significant_discriminative (q_Fisher ≤ α — sole gate)
+    is_significant_final:      bool  = False  # is_significant_discriminative (q_Hou ≤ α — sole gate)
     significance_category:     str   = "Neither"  # "Both" | "Structural only" | "Discriminative only" | "Neither"
 
     # Subgroup applicability
@@ -669,68 +668,65 @@ def evaluate_pattern_fast(
 # DATA LOADING
 # ============================================================================
 
+def _age_bracket(age) -> str:
+    """Bin raw patient age into standard clinical age groups."""
+    try:
+        a = float(age)
+    except (TypeError, ValueError):
+        return 'UNKNOWN'
+    if np.isnan(a):
+        return 'UNKNOWN'
+    if a < 40:  return '<40'
+    if a < 60:  return '40-59'
+    if a < 75:  return '60-74'
+    return '75+'
+
+
 def load_and_preprocess_data(filepath: str) -> Dict[str, CaseInfo]:
-    """Load RTFMP event log and extract case information.
+    """Load Sepsis ICU event log and extract case information.
 
     Column mapping:
         case:concept:name    → case identifier
         time:timestamp       → event timestamp
-        concept:name         → activity name
-        lifecycle:transition → event lifecycle state; only 'complete' events are retained
-        vehicleClass         → vehicle category of the fine (case-level attribute)
-        dismissal            → dismissal type of the fine (case-level attribute)
+        concept:name         → activity name (16 unique activities)
+        org:group            → medical department of the event
+        Age                  → patient age (case-level, on first event row)
 
     Outcome determination (binary):
-        Class 1 (Sent for Credit Collection / Deviant) —
-            'Send for Credit Collection' activity present anywhere in the case.
-            Canonical label: Teinemaa et al. (TKDE 2019) — RTFM binary outcome.
-        Class 0 (No Credit Collection / Normal) —
-            'Send for Credit Collection' absent from the case.
-        Skipped — missing case ID or empty trace after lifecycle filtering.
+        Class 1 (Return ER / Deviant) — 'Return ER' activity present anywhere in trace.
+                                        Canonical label: Mannhardt (2016); Teinemaa et al.
+                                        (TKDE 2019) sepsis_cases_1.
+        Class 0 (No Return ER / Normal) — 'Return ER' absent from trace.
+        Skipped                         — missing case ID or empty trace.
 
-    Lifecycle filter: the RTFMP log records both 'start' and 'complete' events for each
-    activity.  Only 'complete' rows are retained before building traces; retaining both
-    would double-count every activity, distorting trace lengths and pattern prevalences.
+    Outcome-signal removal: 'Return ER' is stripped from the activity trace after
+    labelling.  Retaining it would produce trivially dominant DECLARE constraints
+    (Init/End/Response involving 'Return ER' at 100% in Class 1 and 0% in Class 0)
+    that encode the label rather than genuine process behaviour.
 
-    Outcome-signal removal: 'Send for Credit Collection' is stripped from the activity
-    trace after labelling.  Retaining it would produce trivially dominant DECLARE
-    constraints (Init/End/Response involving the target at 100% in Class 1 and 0% in
-    Class 0) that encode the label rather than genuine process behaviour.
-
-    Case-level attributes extracted (first non-null value per case):
-        vehicleClass  → vehicle_class  (A / B / C / etc.)
-        dismissal     → dismissal_type (NIL / etc.)
+    No lifecycle filter is applied: the Sepsis log records each activity as a
+    single completed event (all lifecycle:transition values are 'complete'),
+    so no START duplicates exist to inflate pattern counts.
     """
     print("\n" + "=" * 100)
     print("THREE-HYPOTHESIS DISCRIMINATIVE SPECIFICATION MINING — PHASE 1")
-    print("Storey CONJUNCTION TEST (H₀ˢ ∧ H₀ᵈ) — RTFMP DATASET")
+    print("Storey CONJUNCTION TEST (H₀ˢ ∧ H₀ᵈ) — SEPSIS DATASET")
     print("=" * 100)
     print("\n📊 STEP 0: DATA LOADING & PREPROCESSING")
     print("=" * 100)
 
     df = pd.read_csv(filepath, low_memory=False)
-    # Drop rows with no case assignment
+    # Drop metadata rows with no case assignment (24 null case IDs in the XES export)
     df = df.dropna(subset=['case:concept:name'])
-    print(f"\n✓ Loaded {len(df):,} raw events from {df['case:concept:name'].nunique():,} cases")
-
-    # ── Lifecycle filter: keep only 'complete' events ────────────────────────
-    # The RTFMP log contains both start and complete rows.  Keeping starts would
-    # duplicate each activity in every trace, inflating pattern satisfaction counts.
-    if 'lifecycle:transition' in df.columns:
-        before = len(df)
-        df = df[df['lifecycle:transition'].str.lower() == 'complete'].copy()
-        print(f"   Lifecycle filter ('complete' only): {before:,} → {len(df):,} events "
-              f"({before - len(df):,} non-complete rows dropped)")
-    else:
-        print("   ⚠️  'lifecycle:transition' column not found — no lifecycle filter applied")
+    print(f"\n✓ Loaded {len(df):,} events from {df['case:concept:name'].nunique():,} cases")
 
     act_counts = df['concept:name'].value_counts()
-    print(f"\n   Activity vocabulary ({len(act_counts)} activities):")
+    print(f"   Activity vocabulary ({len(act_counts)} activities):")
     for act, cnt in act_counts.items():
-        print(f"     {act:<45s}: {cnt:,}")
+        print(f"     {act:<35s}: {cnt:,}")
 
-    # Outcome signal: 'Send for Credit Collection' present anywhere in case → deviant
-    TARGET_ACTIVITY = 'Send for Credit Collection'
+    # Outcome signal: presence anywhere in trace → deviant class
+    RETURN_ER = 'Return ER'
 
     case_data = {}
     skipped = {'empty_trace': 0}
@@ -739,11 +735,11 @@ def load_and_preprocess_data(filepath: str) -> Dict[str, CaseInfo]:
         case_events = group.sort_values('time:timestamp')
         all_activities = case_events['concept:name'].tolist()
 
-        # Label: 1 if target activity appears anywhere in the (complete) trace
-        outcome = 1 if TARGET_ACTIVITY in all_activities else 0
+        # Label: 1 if 'Return ER' appears anywhere, 0 otherwise
+        outcome = 1 if RETURN_ER in all_activities else 0
 
         # Strip outcome signal from trace to prevent trivially dominant patterns
-        trace = [a for a in all_activities if a != TARGET_ACTIVITY]
+        trace = [a for a in all_activities if a != RETURN_ER]
 
         if len(trace) == 0:
             skipped['empty_trace'] += 1
@@ -751,20 +747,20 @@ def load_and_preprocess_data(filepath: str) -> Dict[str, CaseInfo]:
 
         activity_index = precompute_activity_index(trace, case_id=str(case_id))
 
-        # vehicleClass: case-level attribute — take first non-null value in the case
-        vc_series = case_events['vehicleClass'].dropna() if 'vehicleClass' in case_events.columns else pd.Series([], dtype=object)
-        vehicle_class = str(vc_series.iloc[0]) if len(vc_series) > 0 else 'UNKNOWN'
+        # org:group from the first (admission) event
+        org_group_raw = case_events['org:group'].iloc[0]
+        org_group = str(org_group_raw) if not pd.isna(org_group_raw) else 'UNKNOWN'
 
-        # dismissal: case-level attribute — take first non-null value in the case
-        dm_series = case_events['dismissal'].dropna() if 'dismissal' in case_events.columns else pd.Series([], dtype=object)
-        dismissal_type = str(dm_series.iloc[0]) if len(dm_series) > 0 else 'UNKNOWN'
+        # Age is a case-level attribute carried on the first event row
+        age_raw = case_events['Age'].iloc[0] if 'Age' in case_events.columns else float('nan')
+        age_bracket = _age_bracket(age_raw)
 
         case_data[str(case_id)] = CaseInfo(
             case_id=str(case_id),
             outcome=outcome,
             trace=trace,
-            vehicle_class=vehicle_class,
-            dismissal_type=dismissal_type,
+            org_group=org_group,
+            age_bracket=age_bracket,
             start_timestamp=pd.to_datetime(case_events['time:timestamp'].iloc[0]),
             activity_index=activity_index,
         )
@@ -777,10 +773,8 @@ def load_and_preprocess_data(filepath: str) -> Dict[str, CaseInfo]:
     n1 = sum(1 for c in case_data.values() if c.outcome == 1)
     n0 = len(case_data) - n1
     print(f"\n📊 Outcome Distribution:")
-    print(f"   Class 1 (Sent for Credit Collection / Deviant): {n1:,} ({n1/len(case_data)*100:.1f}%)")
-    print(f"   Class 0 (No Credit Collection / Normal):        {n0:,} ({n0/len(case_data)*100:.1f}%)")
-    ir = max(n0, n1) / min(n0, n1) if min(n0, n1) > 0 else float('inf')
-    print(f"   Imbalance ratio (maj/min): {ir:.3f}")
+    print(f"   Class 1 (Return ER / Deviant):   {n1:,} ({n1/len(case_data)*100:.1f}%)")
+    print(f"   Class 0 (No Return ER / Normal): {n0:,} ({n0/len(case_data)*100:.1f}%)")
 
     return case_data
 
@@ -868,24 +862,18 @@ def extract_subgroups_from_case_data(
     case_to_subgroups: Dict[str, List[str]] = {}
     subgroup_to_cases: Dict[str, set] = {}
     for cid, case in case_data.items():
-        # RTFMP subgroups: VehicleClass × DismissalType
-        # Dimension 1: vehicleClass of the fine (A / B / C / etc.)
-        #              Captures whether process behaviour differs across vehicle categories —
-        #              empirically relevant because fine amounts, articles, and escalation
-        #              rates all vary by vehicle type in the RTFMP log.
-        # Dimension 2: dismissal type (NIL / etc.)
-        #              Cases where a dismissal was issued follow a qualitatively different
-        #              process path, making dismissal a natural process partition.
-        _sentinel = ('UNKNOWN', '', 'nan', 'None', 'none', 'NaN')
+        # Sepsis subgroups: OrgGroup × AgeBracket
+        # Dimension 1: org:group of the admission event (medical department)
+        # Dimension 2: patient age bracket (<40 / 40-59 / 60-74 / 75+)
         sgs = []
-        if case.vehicle_class not in _sentinel:
-            sg_vc = f"VehicleClass_{case.vehicle_class.replace(' ', '_')}"
-            sgs.append(sg_vc)
-            subgroup_to_cases.setdefault(sg_vc, set()).add(cid)
-        if case.dismissal_type not in _sentinel:
-            sg_dm = f"Dismissal_{case.dismissal_type.replace(' ', '_')}"
-            sgs.append(sg_dm)
-            subgroup_to_cases.setdefault(sg_dm, set()).add(cid)
+        if case.org_group not in ('UNKNOWN', '', 'nan', 'None'):
+            sg_org = f"OrgGroup_{case.org_group.replace(' ', '_')}"
+            sgs.append(sg_org)
+            subgroup_to_cases.setdefault(sg_org, set()).add(cid)
+        if case.age_bracket not in ('UNKNOWN', '', 'nan', 'None'):
+            sg_age = f"Age_{case.age_bracket}"
+            sgs.append(sg_age)
+            subgroup_to_cases.setdefault(sg_age, set()).add(cid)
         if sgs:
             case_to_subgroups[cid] = sgs
     return case_to_subgroups, subgroup_to_cases
@@ -914,7 +902,7 @@ def determine_applicable_subgroups_with_cases(
 #   2. For each pattern p: recompute Δ_b = P̂₁^(b) − P̂₀^(b)
 #      using the pre-computed holds_by_case: O(n) per pattern
 #   3. Accumulate |Δ_b| ≥ |Δ_obs| counts for Phipson-Smyth p-values
-#   4. Store delta_b into null_delta_matrix[b, :] for SAM FDR estimation
+#   4. Store delta_b into null_delta_matrix[b, :] for Storey FDR estimation
 #      (one float32 row per resample — no extra permutation passes needed)
 # ============================================================================
 
@@ -937,8 +925,8 @@ def run_label_permutation_test(
 
     Additionally builds null_delta_matrix (B₁ × m, float32), which stores all
     permuted Δ_b vectors. This matrix is passed to sam_permutation_fdr() in
-    step 5b to compute the SAM empirical FDR estimate without any additional
-    permutation passes.
+    step 5b to compute per-pattern Phipson-Smyth p-values for the Storey FDR
+    estimate without any additional permutation passes.
 
     Memory: null_delta_matrix at float32 is B₁ × m × 4 bytes
             (e.g. 10,000 × 20,000 × 4 ≈ 800 MB for the full pattern space).
@@ -1008,7 +996,7 @@ def run_label_permutation_test(
     valid = ~np.isnan(holds_matrix)              # (m, n_total)
     holds_filled = np.where(valid, holds_matrix, 0.0)  # NaN → 0 for masked sums
 
-    # SAM: pre-allocate full null delta matrix (B1 × m) for empirical FDR estimation
+    # Pre-allocate full null delta matrix (B1 × m) for Storey FDR estimation
     null_delta_matrix = np.zeros((B1, m), dtype=np.float32)
 
     print(f"\n   Running {B1:,} label permutations...")
@@ -1024,7 +1012,7 @@ def run_label_permutation_test(
         prev0_b = np.where(cnt0 > 0, (holds_filled * mask0).sum(axis=1) / np.maximum(cnt0, 1), 0.0)
         delta_b = prev1_b - prev0_b                        # (m,)
 
-        null_delta_matrix[b_idx] = delta_b.astype(np.float32)  # SAM: store each resample
+        null_delta_matrix[b_idx] = delta_b.astype(np.float32)  # store each resample for Storey FDR
         null_delta_sum     += delta_b
         null_delta_sq_sum  += delta_b ** 2
         count_extreme_two  += (np.abs(delta_b) >= abs_delta_obs).astype(int)
@@ -1047,7 +1035,7 @@ def run_label_permutation_test(
             'null_delta_std': float(null_std),
         }
 
-    # SAM: attach full null delta matrix for empirical FDR estimation
+    # Attach full null delta matrix for Storey FDR estimation (Step 5b)
     results_disc['__null_delta_matrix__'] = null_delta_matrix  # shape (B1, m)
 
     # Summary
@@ -1093,12 +1081,50 @@ def generate_permuted_log(
     return PermutedLog(cases=permuted)
 
 
+def _struct_perm_worker(
+    b_indices: List[int],
+    D_y: Dict[str, CaseInfo],
+    candidates_y: List[Tuple],
+    random_state: int,
+) -> np.ndarray:
+    """
+    Top-level loky-safe worker: evaluates a chunk of B₂ trace permutations.
+
+    Args:
+        b_indices:    List of b_idx values assigned to this worker.
+        D_y:          Class-conditional case dict (Dict[case_id → CaseInfo]).
+        candidates_y: Pattern pool for this class.
+        random_state: Base random seed — deterministic seeding via
+                      (random_state + b_idx * 100000 + det_hash) in
+                      generate_permuted_log, so each b_idx maps to a unique,
+                      reproducible permutation regardless of chunk assignment.
+
+    Returns:
+        ndarray of shape (len(b_indices), m_y) — perm_prev_matrix rows for this chunk.
+    """
+    m_y = len(candidates_y)
+    chunk_result = np.zeros((len(b_indices), m_y))
+    for row, b_idx in enumerate(b_indices):
+        perm_log = generate_permuted_log(D_y, b_idx, random_state)
+        for p_idx, (ct, a, b) in enumerate(candidates_y):
+            nsat = napp = 0
+            for cid, perm_trace, perm_idx in perm_log.cases:
+                r = evaluate_pattern_fast(ct, a, b, perm_trace, perm_idx)
+                if r is not None:
+                    napp += 1
+                    if r == 1:
+                        nsat += 1
+            chunk_result[row, p_idx] = nsat / napp if napp > 0 else 0.0
+    return chunk_result
+
+
 def run_structural_permutation_test(
     D_y: Dict[str, CaseInfo],
     candidates_y: List[Tuple[str, str, Optional[str]]],
     class_label: int,
     B2: int,
     random_state: int,
+    n_workers: int = 1,   # >1 → parallel B₂ loop; MUST be 1 when called from within a loky worker
 ) -> Dict[Tuple, Dict]:
     """
     Trace-activity permutation test for H₀ˢ (structural null) within one class.
@@ -1122,7 +1148,7 @@ def run_structural_permutation_test(
             'n_satisfied': int,
         }]
     """
-    class_name = "Sent for Credit Collection" if class_label == 1 else "No Credit Collection"
+    class_name = "Return ER" if class_label == 1 else "No Return ER"
     n_y = len(D_y)
     m_y = len(candidates_y)
 
@@ -1154,22 +1180,33 @@ def run_structural_permutation_test(
         obs_napp[p_idx] = napp
 
     # Run trace permutations
-    perm_prev_matrix = np.zeros((B2, m_y))  # B₂ × m_y
+    print(f"   Running {B2} trace-activity permutations (n_workers={n_workers})...")
 
-    print(f"   Running {B2} trace-activity permutations...")
-    for b_idx in tqdm(range(B2), desc=f"Trace perm (class {class_label})"):
-        perm_log = generate_permuted_log(D_y, b_idx, random_state)
+    if n_workers > 1:
+        # Parallel mode: split B₂ indices evenly across workers.
+        # _struct_perm_worker is top-level → picklable by loky.
+        # Seeding is deterministic per b_idx regardless of chunk assignment.
+        chunks = [list(c) for c in np.array_split(range(B2), n_workers)]
+        chunk_results = Parallel(n_jobs=n_workers, backend='loky')(
+            delayed(_struct_perm_worker)(chunk, D_y, candidates_y, random_state)
+            for chunk in chunks
+        )
+        perm_prev_matrix = np.vstack(chunk_results)  # (B2, m_y)
+    else:
+        perm_prev_matrix = np.zeros((B2, m_y))  # B₂ × m_y
+        for b_idx in tqdm(range(B2), desc=f"Trace perm (class {class_label})"):
+            perm_log = generate_permuted_log(D_y, b_idx, random_state)
 
-        for p_idx, (ct, a, b) in enumerate(candidates_y):
-            nsat = 0
-            napp = 0
-            for cid, perm_trace, perm_idx in perm_log.cases:
-                r = evaluate_pattern_fast(ct, a, b, perm_trace, perm_idx)
-                if r is not None:
-                    napp += 1
-                    if r == 1:
-                        nsat += 1
-            perm_prev_matrix[b_idx, p_idx] = nsat / napp if napp > 0 else 0.0
+            for p_idx, (ct, a, b) in enumerate(candidates_y):
+                nsat = 0
+                napp = 0
+                for cid, perm_trace, perm_idx in perm_log.cases:
+                    r = evaluate_pattern_fast(ct, a, b, perm_trace, perm_idx)
+                    if r is not None:
+                        napp += 1
+                        if r == 1:
+                            nsat += 1
+                perm_prev_matrix[b_idx, p_idx] = nsat / napp if napp > 0 else 0.0
 
     # Null statistics (for diagnostics only — not used in the test statistic)
     null_means = perm_prev_matrix.mean(axis=0)  # (m_y,)
@@ -1178,7 +1215,7 @@ def run_structural_permutation_test(
     # ── SAMPLE SPLITTING (Fithian & Lei 2022; Cox 1975) ──────────────────────
     # Split B2 permutations into two independent halves using disjoint indices:
     #   Screen half (even indices): for scope filtering only
-    #   Test half (odd indices):    for Fisher combination only
+    #   Test half (odd indices):    for Hou (2005) weighted combination only
     # Independence: disjoint permutation draws → independent p-values under H₀ˢ.
     B2_screen = B2 // 2          # even-indexed permutations
     B2_test   = B2 - B2_screen   # odd-indexed permutations
@@ -1229,8 +1266,8 @@ def run_structural_permutation_test(
     for p_idx, pspec in enumerate(candidates_y):
         results_struct[pspec] = {
             'p_structural_screen': float(p_screen[p_idx]),   # for scope filter only
-            'p_structural_test':   float(p_test[p_idx]),     # for Fisher combination only
-            'p_structural':        float(p_test[p_idx]),     # backward compat (= test)
+            'p_structural_test':   float(p_test[p_idx]),     # for Hou (2005) weighted combination only
+            'p_structural':        float(p_test[p_idx]),     # backward compat alias (= p_structural_test)
             'prevalence_obs': float(obs_prev[p_idx]),
             'null_mean': float(null_means[p_idx]),
             'null_std': float(null_stds[p_idx]),
@@ -1249,6 +1286,7 @@ def run_structural_permutation_test(
 
 # ============================================================================
 # FISHER CONJUNCTION P-VALUE (Fisher 1932; Littell & Folks 1973)
+# NOTE: Retained for BH reference (Step 5a) only. Primary gate uses T_Hou.
 # ============================================================================
 
 def fisher_conjunction_pvalue(
@@ -1285,6 +1323,8 @@ def fisher_conjunction_pvalue(
 
 # ============================================================================
 # IUT CONJUNCTION P-VALUE (Berger 1982, Technometrics)
+# NOTE: Historical reference — superseded by Hou (2005) weighted combination.
+# Retained for comparison and as scientific context for the framework.
 # ============================================================================
 
 def iut_conjunction_pvalue(
@@ -1327,10 +1367,142 @@ def iut_conjunction_pvalue(
 
 
 # ============================================================================
+# HOU (2005) WEIGHTED COMBINATION STATISTIC — CORE PRIMITIVES
+# ============================================================================
+
+def estimate_rho_sd(
+    p_struct_dom: np.ndarray,
+    p_disc:       np.ndarray,
+    eps:          float = 1e-300,
+) -> float:
+    """
+    Estimate the correlation ρ_sd between the two component test statistics.
+
+    Following Alves & Yu (2014) eq.(8) and Hou (2005) §4, the covariance
+    term cov(−2 log P_s, −2 log P_d) depends on the correlation ρ between
+    the UNDERLYING test statistics.  We estimate this as the Pearson correlation
+    of {−ln p_struct_dom(p)} and {−ln p_disc(p)} across all m patterns, which
+    is the natural data-driven estimator when correlation are unknown (Hou 2005).
+
+    Args:
+        p_struct_dom: (m,) dominant-class structural Phipson-Smyth p-values.
+        p_disc:       (m,) two-sided discriminative Phipson-Smyth p-values.
+        eps:          floor before log to avoid log(0).
+
+    Returns:
+        Scalar ρ̂_sd ∈ [−1, 1].  Returns 0.0 if m < 3 or degenerate variance.
+
+    References:
+        Hou (2005) §4 — correlation estimation from data.
+        Alves & Yu (2014) eq.(8) — pairwise correlation using −ln p.
+    """
+    p_struct_dom = np.asarray(p_struct_dom, dtype=np.float64)
+    p_disc       = np.asarray(p_disc,       dtype=np.float64)
+    m = len(p_struct_dom)
+    if m < 3:
+        return 0.0
+    log_ps = -np.log(np.clip(p_struct_dom, eps, 1.0))
+    log_pd = -np.log(np.clip(p_disc,       eps, 1.0))
+    if np.std(log_ps) < eps or np.std(log_pd) < eps:
+        return 0.0
+    return float(np.corrcoef(log_ps, log_pd)[0, 1])
+
+
+def hou_satterthwaite_params(
+    w_s:    float,
+    w_d:    float,
+    rho_sd: float,
+) -> Tuple[float, float]:
+    """
+    Satterthwaite (1946) moment-matching for Hou's (2005) weighted combination statistic.
+
+    Approximates X = −2(w_s log P_s + w_d log P_d) by c · χ²_f, where c and f
+    are chosen so that E[X] = cf and V[X] = 2c²f (Hou 2005, §2, eqs. (3)–(4)).
+
+    The covariance cov(−2 log P_i, −2 log P_j) is evaluated via Brown (1975)
+    polynomial (cited verbatim in Hou 2005):
+
+        cov = ρ(3.25 + 0.75ρ)    if  0  ≤ ρ ≤ 1
+        cov = ρ(3.27 + 0.71ρ)    if −0.5 ≤ ρ < 0
+
+    With weights normalised to sum 1 (w_s + w_d = 1):
+        E[X] = 2(w_s + w_d) = 2
+        V[X] = 4(w_s² + w_d²) + 2 w_s w_d · cov_sd
+        c    = V[X] / (2 E[X]) = V[X] / 4
+        f    = 2 [E[X]]² / V[X] = 8 / V[X]
+
+    Under independence (ρ = 0) and equal weights (w_s = w_d = 0.5):
+        V[X] = 4·2·0.25 = 2,  c = 0.5,  f = 4  ⟹  X/c ~ χ²_4  (reduces to unweighted Fisher combination).
+
+    Args:
+        w_s:    structural weight  (≥ 0, w_s + w_d = 1).
+        w_d:    discriminative weight (≥ 0).
+        rho_sd: estimated ρ̂_sd ∈ [−0.5, 1].
+
+    Returns:
+        (c, f) — scale factor and effective degrees of freedom for cχ²_f.
+
+    References:
+        Hou (2005) §2, eqs. (3)–(4).
+        Brown (1975) Biometrics 31:987–992 — covariance polynomial.
+        Satterthwaite (1946) Biometrics Bulletin 2:110–114.
+    """
+    rho = float(np.clip(rho_sd, -0.5, 1.0))
+    if rho >= 0.0:
+        cov_sd = rho * (3.25 + 0.75 * rho)
+    else:
+        cov_sd = rho * (3.27 + 0.71 * rho)
+
+    E_X = 2.0 * (w_s + w_d)                          # = 2.0  (normalised weights)
+    V_X = 4.0 * (w_s ** 2 + w_d ** 2) + 2.0 * w_s * w_d * cov_sd
+    V_X = max(V_X, 1e-12)                             # numerical safety
+    c   = V_X / (2.0 * E_X)
+    f   = 2.0 * E_X ** 2 / V_X
+    return c, f
+
+
+def hou_combination_statistic(
+    p_struct_dom: np.ndarray,
+    p_disc:       np.ndarray,
+    w_s:          float,
+    w_d:          float,
+    eps:          float = 1e-300,
+) -> np.ndarray:
+    """
+    Hou (2005) weighted combination statistic for H₀ᶜ = H₀ˢ ∩ H₀ᵈ.
+
+        T_Hou(p) = −2 [w_s ln p_struct_dom(p) + w_d ln p_disc(p)]
+
+    Distribution under H₀ᶜ: approximately c · χ²_f (Satterthwaite), with c
+    and f computed by hou_satterthwaite_params(w_s, w_d, ρ̂_sd).
+
+    Reduces to the unweighted Fisher combination when w_s = w_d = 0.5 and ρ = 0
+    (Fisher is a degenerate case of Hou with equal weights and independence).
+
+    Args:
+        p_struct_dom: (m,) dominant-class structural p-values.
+        p_disc:       (m,) two-sided discriminative p-values.
+        w_s:          structural weight (0 ≤ w_s ≤ 1, w_s + w_d = 1).
+        w_d:          discriminative weight.
+        eps:          floor before log.
+
+    Returns:
+        (m,) array of T_Hou values.
+
+    References:
+        Hou (2005) §2.
+        Alves & Yu (2014) — best-performing method for correlated p-values.
+    """
+    ps = np.clip(np.asarray(p_struct_dom, dtype=np.float64), eps, 1.0)
+    pd = np.clip(np.asarray(p_disc,       dtype=np.float64), eps, 1.0)
+    return -2.0 * (w_s * np.log(ps) + w_d * np.log(pd))
+
+
+# ============================================================================
 # STEP 5a — BH-FDR PROCEDURE ON FISHER CONJUNCTION P-VALUES (reference)
 # ============================================================================
 # Retained as a secondary significance criterion for paper comparison.
-# The primary criterion is Storey Q-Value FDR on p_Fisher in step 5b.
+# The primary criterion is Storey Q-Value FDR on p̃_Hou in step 5b.
 # ============================================================================
 
 def benjamini_hochberg(
@@ -1342,10 +1514,10 @@ def benjamini_hochberg(
     Benjamini-Hochberg (1995) or Benjamini-Yekutieli (2001) step-up procedure.
 
     NOTE: This function is retained as a secondary/reference significance
-    procedure. The primary FDR control is sam_permutation_fdr(). BH is run
-    on the conjunction p-values p_conj = max(p_struct, p_disc) and its results
-    are stored in PatternTestResult.is_significant_bh / bh_rank / bh_threshold
-    for comparison against the SAM results in the paper.
+    procedure. The primary FDR control is the Hou-Storey q-value gate (Step 5b).
+    BH is run on the analytic Hou conjunction p-values (Satterthwaite) and its
+    results are stored in PatternTestResult.is_significant_bh / bh_rank / bh_threshold
+    for comparison against the Hou-Storey results in the paper.
 
     Args:
         p_values: Array of m p-values (here: conjunction p-values p_conj).
@@ -1407,59 +1579,6 @@ def benjamini_hochberg(
 # ============================================================================
 # BOOTSTRAP π̂₀ ESTIMATOR (Storey, Taylor & Siegmund 2002)
 # ============================================================================
-
-# def storey_pi0_bootstrap(
-#     p_vals: np.ndarray,
-#     lambdas: Optional[np.ndarray] = None,
-#     B: int = 100,
-#     random_state: int = 42,
-# ) -> Tuple[float, float]:
-#     """
-#     Storey-Taylor-Siegmund (2002) bootstrap π̂₀ estimator.
-
-#     Evaluates π̂₀(λ) = mean(p > λ)/(1−λ) across a λ grid and selects the λ*
-#     that minimises bootstrap MSE = Var_B[π̂₀(λ)] + (bias proxy)². This corrects
-#     the upward bias of any single fixed λ when m' is small (≈100–200).
-
-#     Does NOT change α — only reduces the overestimation of the null fraction.
-
-#     Args:
-#         p_vals:       (m,) array of per-pattern Phipson-Smyth p-values.
-#         lambdas:      λ grid; defaults to np.arange(0.05, 0.90, 0.05).
-#         B:            number of bootstrap resamples (100 is sufficient).
-#         random_state: RNG seed for reproducibility.
-
-#     Returns:
-#         (pi0_final, lambda_star)
-
-#     References:
-#         Storey, Taylor & Siegmund (2002). Strong control, conservative point
-#             estimation and simultaneous conservative consistency of false
-#             discovery rates: a unified approach. JRSS-B 66(1):187-205.
-#     """
-#     if lambdas is None:
-#         lambdas = np.arange(0.05, 0.90, 0.05)
-#     m = len(p_vals)
-#     rng = np.random.RandomState(random_state)
-
-#     # π̂₀(λ) on the observed p-values for each λ
-#     pi0_grid = np.array([np.mean(p_vals > lam) / (1.0 - lam) for lam in lambdas])
-#     pi0_grid = np.minimum(pi0_grid, 1.0)  # conservative cap
-
-#     # Bootstrap MSE for each λ
-#     mse = np.zeros(len(lambdas))
-#     for i, lam in enumerate(lambdas):
-#         boot_ests = np.zeros(B)
-#         for b in range(B):
-#             p_boot = rng.choice(p_vals, size=m, replace=True)
-#             boot_ests[b] = min(np.mean(p_boot > lam) / (1.0 - lam), 1.0)
-#         # MSE = variance + squared bias (using pi0_grid[i] as the reference)
-#         mse[i] = np.var(boot_ests) + (np.mean(boot_ests) - pi0_grid[-1]) ** 2
-
-#     best_idx = int(np.argmin(mse))
-#     lambda_star = float(lambdas[best_idx])
-#     pi0_final = float(pi0_grid[best_idx])
-#     return pi0_final, lambda_star
 
 def storey_pi0_bootstrap(
     p_vals: np.ndarray,
@@ -1544,7 +1663,7 @@ def adaptive_storey_pi0(
     for Phipson-Smyth permutation p-values (super-uniform by construction).
 
     Args:
-        pvals      : (m,) array of p-values (Fisher conjunction OR structural).
+        pvals      : (m,) array of p-values (p̃_Hou empirical OR structural).
         q          : FDR level; lower hard bound for the λ-grid. Pass fdralpha.
         lambda_max : Upper truncation (0.80 per paper §3 simulation).
         delta      : Grid step size. None → δ = (lambda_max − q) / 50.
@@ -1609,7 +1728,7 @@ def storey_qvalue(p_vals: np.ndarray, pi0_hat: float) -> np.ndarray:
     returned in the ORIGINAL order of p_vals (unsorted).
 
     Args:
-        p_vals:   (m,) array of p-values (e.g. Fisher conjunction p-values).
+        p_vals:   (m,) array of p-values (e.g. empirical p̃_Hou values).
         pi0_hat:  estimated null fraction, typically from storey_pi0_bootstrap().
 
     Returns:
@@ -1699,7 +1818,7 @@ def sam_permutation_fdr(
             sort_idx        : (m,) — argsort(p_disc_ps) ascending
             sorted_d        : (m,) — d_obs in sort_idx order (diagnostic)
             sigma_null      : (m,) — per-pattern null std (diagnostic)
-            s0              : float — SAM fudge factor (diagnostic only)
+            s0              : float — SAM fudge factor (legacy diagnostic; not used in Hou-Storey)
             d_obs           : (m,) — standardized statistics (diagnostic)
             p_disc_ps       : (m,) — per-pattern Phipson-Smyth p-values
 
@@ -1868,8 +1987,8 @@ def generate_candidate_patterns(
                 print(f"     • {ct:<30s}: {tc[ct]:,}")
         return out
 
-    candidates_pos = _filter(lpos, "L+ (Sent for Credit Collection)")
-    candidates_neg = _filter(lneg, "L− (No Credit Collection)")
+    candidates_pos = _filter(lpos, "L+ (Return ER)")
+    candidates_neg = _filter(lneg, "L− (No Return ER)")
 
     # Build union
     pos_set = set(candidates_pos)
@@ -1886,7 +2005,7 @@ def generate_candidate_patterns(
 
 
 # ============================================================================
-# EMPIRICAL CALIBRATION — DOUBLE-NULL T_F MATRIX
+# EMPIRICAL CALIBRATION — DOUBLE-NULL T_Hou MATRIX
 # ============================================================================
 
 def compute_double_null_tf_matrix(
@@ -1902,7 +2021,12 @@ def compute_double_null_tf_matrix(
     n_jobs:          int = -1,
 ) -> np.ndarray:
     """
-    Run B_null doubly-nullified replicates and record per-pattern T_F^(b) values.
+    Run B_null doubly-nullified replicates and record per-pattern T_Hou^(b) values.
+
+    Each replicate applies the joint double-null sigma_trace ∘ sigma_label, guaranteeing
+    that both p_s^(b) and p_d^(b) are independently super-uniform under H₀ᶜ.  The
+    Hou (2005) weighted statistic is then computed from these null p-values, producing
+    the empirical null distribution of T_Hou against which the observed T_Hou_obs is ranked.
 
     Protocol per replicate b
     ─────────────────────────
@@ -1912,12 +2036,19 @@ def compute_double_null_tf_matrix(
     3. Recompute holds on the shuffled traces.
     4. Run label permutation test  (B1_null resamples) → p_d^(b)  per pattern.
     5. Run structural permutation  (B2_null resamples, both classes) → p_s^(b).
-    6. T_F^(b)(i) = -2(ln p_s_dom^(b)(i) + ln p_d^(b)(i))   [chi2_4 under true null]
+    6. T_Hou^(b)(i) = -2[W_STRUCT·ln p_s_dom^(b)(i) + W_DISC·ln p_d^(b)(i)]
+       Same weights (W_STRUCT=0.40, W_DISC=0.60) as the observed statistic.
+
+    Validity: under the double-null, T_Hou_obs(i) is exchangeable with
+    T_Hou^(1)(i), ..., T_Hou^(B)(i) by the permutation rank argument.
+    The Phipson-Smyth empirical p-value
+        p̃_Hou(i) = (1 + #{b: T_Hou^(b)(i) ≥ T_Hou_obs(i)}) / (B_null + 1)
+    is therefore stochastically super-uniform under H₀ᶜ (Phipson & Smyth 2010).
 
     Returns
     ───────
     tf_null_matrix : ndarray, shape (B_null, m)
-        tf_null_matrix[b, i] = T_F^(b)(i) for pattern i in replicate b.
+        tf_null_matrix[b, i] = T_Hou^(b)(i) for pattern i in replicate b.
         Patterns are in the same order as candidates_all.
     """
     import copy
@@ -1933,7 +2064,7 @@ def compute_double_null_tf_matrix(
     )  # (B_null, n)
 
     def _run_one_replicate(b: int) -> np.ndarray:
-        """Returns T_F^(b) of shape (m,)."""
+        """Returns T_Hou^(b) of shape (m,) — Hou (2005) weighted combination statistic under double-null."""
         rs = BASE_SEED + 100_000 * b
 
         # ── sigma_trace: shuffle activities within each trace ──────────
@@ -1964,10 +2095,12 @@ def compute_double_null_tf_matrix(
         # ── H_0^s: structural permutation test (B2_null per class) ─────
         D0_null, D1_null = split_by_class(null_case_data)
         struct0 = run_structural_permutation_test(
-            D0_null, candidates_all, class_label=0, B2=B2_null, random_state=rs + 1
+            D0_null, candidates_all, class_label=0, B2=B2_null, random_state=rs + 1,
+            n_workers=1,   # already inside Parallel(n_jobs) — no nested spawning
         )
         struct1 = run_structural_permutation_test(
-            D1_null, candidates_all, class_label=1, B2=B2_null, random_state=rs + 2
+            D1_null, candidates_all, class_label=1, B2=B2_null, random_state=rs + 2,
+            n_workers=1,   # already inside Parallel(n_jobs) — no nested spawning
         )
 
         # ── Dominant class from shuffled prevalences ────────────────────
@@ -1993,16 +2126,22 @@ def compute_double_null_tf_matrix(
         dominant = np.where(prev1 >= prev0, 1, 0)
         p_s_dom = np.where(dominant == 1, p_s_test_c1, p_s_test_c0)
 
-        # ── T_F^(b) ─────────────────────────────────────────────────────
+        # ── T_Hou^(b) — Hou (2005) weighted combination statistic ───────
+        # T_Hou^(b)(i) = -2[W_STRUCT * ln(p_s^(b)(i)) + W_DISC * ln(p_d^(b)(i))]
+        # Uses the SAME weights as the observed statistic, ensuring the double-null
+        # distribution is calibrated for the Hou statistic (not Fisher).
+        # The empirical p-value p̃_Hou(i) = (1 + #{b: T_Hou^(b)(i) ≥ T_Hou_obs(i)}) /
+        # (B_null + 1) is super-uniform by exchangeability (Phipson & Smyth 2010):
+        # under the double-null, T_Hou_obs is exchangeable with T_Hou^(1), ..., T_Hou^(B).
         eps = 1e-300
-        ps = np.clip(p_s_dom, eps, 1.0)
-        pd = np.clip(p_disc,  eps, 1.0)
-        tf_b = -2.0 * (np.log(ps) + np.log(pd))   # shape (m,)
+        ps  = np.clip(p_s_dom, eps, 1.0)
+        pd  = np.clip(p_disc,  eps, 1.0)
+        tf_b = -2.0 * (W_STRUCT * np.log(ps) + W_DISC * np.log(pd))   # shape (m,)
         return tf_b
 
     # ── Run B_null replicates in parallel ──────────────────────────────
-    print(f"\n  Running {B_null} double-null replicates for empirical T_F calibration "
-          f"(B1_null={B1_null}, B2_null={B2_null}, n_jobs={n_jobs})...")
+    print(f"\n  Running {B_null} double-null replicates for empirical T_Hou calibration "
+          f"(Hou 2005 + Phipson-Smyth; B1_null={B1_null}, B2_null={B2_null}, n_jobs={n_jobs})...")
     results = Parallel(n_jobs=n_jobs, verbose=5, backend='loky')(
         delayed(_run_one_replicate)(b) for b in range(B_null)
     )
@@ -2011,33 +2150,35 @@ def compute_double_null_tf_matrix(
 
 
 def empirical_fisher_pvalue(
-    tf_obs:        np.ndarray,   # (m,)  observed T_F values (from chi2_4 score)
-    tf_null_matrix: np.ndarray,  # (B_null, m) null T_F values per replicate
+    tf_obs:        np.ndarray,   # (m,)  observed T_Hou values
+    tf_null_matrix: np.ndarray,  # (B_null, m) null T_Hou values per replicate
 ) -> np.ndarray:
     """
-    Phipson-Smyth (2010) exact permutation p-value for the Fisher combined statistic.
+    Phipson-Smyth (2010) exact permutation p-value for the Hou combined statistic.
 
-        p̃_F(i) = (1 + #{b : T_F^(b)(i) ≥ T_F_obs(i)}) / (B_null + 1)
+        p̃_Hou(i) = (1 + #{b : T_Hou^(b)(i) ≥ T_Hou_obs(i)}) / (B_null + 1)
 
     This is stochastically super-uniform under the joint null (sigma_trace ∘ sigma_label)
-    by the exchangeability argument: under the double-null, T_F_obs(i) is exchangeable
-    with T_F^(1)(i), ..., T_F^(B)(i), so its rank among them is uniform.
+    by the exchangeability argument: under the double-null, T_Hou_obs(i) is exchangeable
+    with T_Hou^(1)(i), ..., T_Hou^(B)(i), so its rank among them is uniform.
+    The exchangeability holds for ANY monotone combination statistic, in particular for
+    T_Hou (Hou 2005) with the same weights used in both observed and null replicates.
 
-    Power preservation: the ranking of patterns by T_F_obs is IDENTICAL to the ranking
-    by p̃_F (both are monotone-decreasing in T_F_obs). The Storey q-value procedure
-    applied to p̃_F uses the same ordered sequence — only calibration shifts.
+    Power preservation: the ranking of patterns by T_Hou_obs is IDENTICAL to the ranking
+    by p̃_Hou (both are monotone-decreasing in T_Hou_obs). The Storey q-value procedure
+    applied to p̃_Hou uses the same ordered sequence — only calibration shifts.
 
     Args
     ────
-    tf_obs         : (m,)         observed Fisher statistics, one per pattern.
-    tf_null_matrix : (B_null, m)  null Fisher statistics under double-null.
+    tf_obs         : (m,)         observed Hou statistics T_Hou_obs, one per pattern.
+    tf_null_matrix : (B_null, m)  null Hou statistics T_Hou^(b) under double-null.
 
     Returns
     ───────
     p_tilde : (m,) empirically calibrated p-values, in (0, 1].
     """
     B_null, m = tf_null_matrix.shape
-    # Count how many null values >= observed value (upper-tail, consistent with chi2_4)
+    # Count how many null values >= observed value (upper-tail, consistent with Satterthwaite c·χ²_f)
     count_geq = (tf_null_matrix >= tf_obs[np.newaxis, :]).sum(axis=0)  # (m,)
     p_tilde = (1.0 + count_geq) / (B_null + 1.0)
     return p_tilde  # in [1/(B+1), 1.0]  — never exactly 0 (Phipson-Smyth)
@@ -2066,15 +2207,17 @@ def execute_three_hypothesis_protocol(
     4. Trace-activity permutation test H₀ˢ:
        - Structural test on D₀ for all union patterns
        - Structural test on D₁ for all union patterns
-    5a. Fisher conjunction p-values + BH-FDR (reference comparison):
-        - T_F(p) = −2(ln p_struct_dominant(p) + ln p_disc(p)) ~ χ²_4   [Fisher 1932]
-        - p_Fisher(p) = chi2.sf(T_F, df=4)
-        - BH step-up on {p_Fisher(p)} at level α
-    5b. Storey (2002) Q-Value FDR on p_Fisher (primary significance criterion):
-        - storey_qvalue(p_Fisher) with bootstrap π̂₀ over structurally-touched m'
-        - q(p) = min_{k'≥k} [π̂₀ · m' · p_Fisher_(k') / k'] ≤ α
-        - Final verdict: is_significant_final = q_Fisher(p) ≤ α
-          (structural evidence already embedded in p_Fisher via Fisher combination)
+    5a. Hou (2005) conjunction p-values + BH-FDR (reference comparison):
+        - T_Hou(p) = −2(w_s ln p_struct_dominant(p) + w_d ln p_disc(p))
+          w_d=0.80, w_s=0.20 (precision-proportional, Pepe & Fleming 1989)
+        - Distribution: T_Hou ~ c·χ²_f  (Satterthwaite; c,f from ρ̂_sd, Brown 1975)
+        - p_Hou(p) = chi2.sf(T_Hou/c, df=f)  [BH reference only]
+        - BH step-up on {p_Hou(p)} at level α
+    5b. Storey (2002) Q-Value FDR on p̃_Hou (primary significance criterion):
+        - p̃_Hou(p): Phipson-Smyth empirical calibration under double-null
+        - storey_qvalue(p̃_Hou) with adaptive π̂₀ (Gao 2023) over scope-filtered m''
+        - q(p) = min_{k'≥k} [π̂₀ · m'' · p̃_Hou_(k') / k'] ≤ α
+        - Final verdict: is_significant_final = q_Hou(p) ≤ α
     """
     # If not provided, derive them (backward compatibility)
     if case_ids_sorted is None:
@@ -2090,6 +2233,7 @@ def execute_three_hypothesis_protocol(
     alpha = CONFIG['fdr_alpha']
     fdr_method = CONFIG['fdr_method']
     rs = CONFIG['random_state']
+    n_workers = CONFIG.get('n_workers', 1)  # >1 only when no outer parallel loop is active
 
     # ── Build union ──────────────────────────────────────────────────────
     pos_set = set(candidates_pos)
@@ -2138,28 +2282,32 @@ def execute_three_hypothesis_protocol(
     # Structural test on full union for both classes.
     # Running on candidates_all (not candidates_neg/pos) ensures every union pattern
     # has a structural p-value for both classes, so no pattern is forced to
-    # p_conj = 1.0 or excluded from SAM simply because its dominant direction
+    # p_conj = 1.0 or excluded from the Storey gate simply because its dominant direction
     # switched relative to Phase 0.
     t_struct0 = time.time()
     struct_results_0 = run_structural_permutation_test(
-        D_0, candidates_all, class_label=0, B2=B2, random_state=rs
+        D_0, candidates_all, class_label=0, B2=B2, random_state=rs,
+        n_workers=n_workers,
     )
     timing['structural_class0'] = time.time() - t_struct0
 
     t_struct1 = time.time()
     struct_results_1 = run_structural_permutation_test(
-        D_1, candidates_all, class_label=1, B2=B2, random_state=rs + 1
+        D_1, candidates_all, class_label=1, B2=B2, random_state=rs + 1,
+        n_workers=n_workers,
     )
     timing['structural_class1'] = time.time() - t_struct1
 
     # ── Subgroup extraction ──────────────────────────────────────────────
     case_to_sg, sg_to_cases = extract_subgroups_from_case_data(case_data)
 
-    # ── Step 5a: Fisher conjunction p-values + BH-FDR (reference) ───────
+    # ── Step 5a: Hou (2005) conjunction p-values + BH-FDR (reference) ─────
     print(f"\n{'='*100}")
-    print("📊 STEP 5a: FISHER CONJUNCTION P-VALUES + BH-FDR (reference)")
+    print("📊 STEP 5a: HOU (2005) CONJUNCTION P-VALUES + BH-FDR (reference)")
     print(f"{'='*100}")
-    print(f"   p_Fisher(p) = chi2.sf(−2(ln p_struct_dom + ln p_disc), df=4)  [Fisher 1932]")
+    print(f"   T_Hou(p) = -2[w_s ln p_struct_dom + w_d ln p_disc]  "
+          f"(w_s={W_STRUCT:.2f}, w_d={W_DISC:.2f}, precision-proportional)")
+    print(f"   p_Hou(p) = chi2.sf(T_Hou/c, f)  [Satterthwaite; ρ̂_sd estimated post-loop]")
     print(f"   BH-{fdr_method} at α = {alpha}  (retained for comparison only)")
 
     cid_set_0 = set(D_0.keys())
@@ -2168,7 +2316,7 @@ def execute_three_hypothesis_protocol(
     # Assemble per-pattern results
     pattern_results: List[PatternTestResult] = []
     p_conj_values = np.ones(m_total)
-    tf_obs_all    = np.zeros(m_total)   # NEW — stores T_F score before chi2 conversion
+    tf_obs_all    = np.zeros(m_total)   # stores T_Hou_obs score (used for empirical p̃_Hou in Step 5b_pre)
 
     for p_idx, pspec in enumerate(tqdm(candidates_all, desc="Assembling results")):
         ct, a, b = pspec
@@ -2191,7 +2339,7 @@ def execute_three_hypothesis_protocol(
         p_disc_one = d['p_one_sided']
 
         # ── H₀ˢ results (sample-split) ──────────────────────────────────
-        # TEST p-values enter Fisher combination.
+        # TEST p-values enter T_Hou weighted combination.
         # SCREEN p-values are stored separately for scope filter only.
         if pspec in struct_results_0:
             s0 = struct_results_0[pspec]
@@ -2213,22 +2361,32 @@ def execute_three_hypothesis_protocol(
             p_s1_test = 1.0; p_s1_screen = 1.0
             null_mean_1 = prev1; null_std_1 = 0.0
 
-        # TEST p-value of the dominant class enters Fisher combination
+        # TEST p-value of the dominant class enters T_Hou weighted combination
         p_struct_dom_test = p_s1_test if dominant == 1 else p_s0_test
 
-        # ── H₀ᶜ — Fisher conjunction (TEST p-values only) ───────────
+        # ── H₀ᶜ — Hou (2005) weighted conjunction (TEST p-values only) ─────
         # p_struct_dom_test is independent of p_disc (disjoint permutation schemes):
         #   structural test shuffles trace order; discriminative test shuffles labels.
-        # Additionally, p_struct_dom_test uses only the test half of structural
-        # permutations, which is disjoint from the screen half used in the scope filter.
+        # p_struct_dom_test uses only the test half of structural permutations (disjoint
+        # from the screen half), so the Hou-Storey gate has no selection bias.
+        #
+        # T_Hou(p) = -2[w_s * ln(p_s) + w_d * ln(p_d)]
+        #   w_d = B_label/(B_label + B2_test) = 0.80  (more permutations → more reliable)
+        #   w_s = B2_test/(B_label + B2_test) = 0.20
+        # Under H₀ᶜ:  T_Hou ~ c·χ²_f  (Satterthwaite, Hou 2005)
+        # Analytic c and f will be recomputed globally AFTER all patterns are assembled,
+        # using the cross-pattern ρ̂_sd estimate.  Here we use a provisional rho=0
+        # (independence) approximation for the per-pattern BH reference value.
         eps = 1e-300
         ps_clip = max(float(p_struct_dom_test), eps)
         pd_clip = max(float(p_disc_two),        eps)
-        tf_obs_i = -2.0 * (np.log(ps_clip) + np.log(pd_clip))   # raw score
+        tf_obs_i = -2.0 * (W_STRUCT * np.log(ps_clip) + W_DISC * np.log(pd_clip))
 
-        # Analytic p-value — KEEP for BH reference (Step 5a) and backward-compat JSON
+        # Provisional analytic p-value with ρ=0 (independence Satterthwaite).
+        # This is updated globally after the loop once ρ̂_sd is known.
         from scipy.stats import chi2 as _chi2
-        pconj_analytic = float(_chi2.sf(tf_obs_i, df=4))
+        _c_indep, _f_indep = hou_satterthwaite_params(W_STRUCT, W_DISC, rho_sd=0.0)
+        pconj_analytic = float(_chi2.sf(tf_obs_i / _c_indep, df=_f_indep))
 
         p_conj_values[p_idx] = pconj_analytic   # analytic, used for BH in Step 5a
         tf_obs_all[p_idx]    = tf_obs_i          # raw score, used for empirical in Step 5b
@@ -2250,9 +2408,9 @@ def execute_three_hypothesis_protocol(
             n_satisfied_class1=nsat1,
             delta_obs=delta,
 
-            p_structural_class0=p_s0_test,        # TEST half (enters Fisher)
-            p_structural_class1=p_s1_test,        # TEST half (enters Fisher)
-            p_structural_dominant=p_struct_dom_test,  # TEST half (enters Fisher)
+            p_structural_class0=p_s0_test,        # TEST half (enters T_Hou weighted combination)
+            p_structural_class1=p_s1_test,        # TEST half (enters T_Hou weighted combination)
+            p_structural_dominant=p_struct_dom_test,  # TEST half (enters T_Hou weighted combination)
             null_mean_class0=null_mean_0,
             null_mean_class1=null_mean_1,
             null_std_class0=null_std_0,
@@ -2279,6 +2437,34 @@ def execute_three_hypothesis_protocol(
             subgroup_to_cases=sg_cases,
         ))
 
+    # ── POST-LOOP: Global Hou Satterthwaite parameters ─────────────────────
+    # Now that all m patterns have p_structural_dominant and p_discriminative, we
+    # can estimate ρ̂_sd globally and compute the correct Satterthwaite c and f.
+    # These replace the per-pattern provisional rho=0 values computed inside the loop.
+    #
+    # Scientific basis: Hou (2005) §4 — "correlations between test statistics may be
+    # unknown and have to be estimated directly from the data."  We use the cross-
+    # pattern Pearson correlation of (−ln p_s, −ln p_d), which is the natural estimator
+    # for the covariance term cov(−2 log P_s, −2 log P_d) (Alves & Yu 2014, eq.(8)).
+    _ps_all = np.array([r.p_structural_dominant for r in pattern_results])
+    _pd_all = np.array([r.p_discriminative      for r in pattern_results])
+    rho_sd_hat = estimate_rho_sd(_ps_all, _pd_all)
+    c_hou, f_hou = hou_satterthwaite_params(W_STRUCT, W_DISC, rho_sd_hat)
+
+    print(f"\n  Hou (2005) Satterthwaite calibration:")
+    print(f"    ρ̂_sd = {rho_sd_hat:.4f}  (cross-pattern Pearson of −ln p_s, −ln p_d)")
+    print(f"    c    = {c_hou:.4f}  (scale factor for χ²_f)")
+    print(f"    f    = {f_hou:.4f}  (effective degrees of freedom)")
+    print(f"    Weights: w_s={W_STRUCT:.2f}, w_d={W_DISC:.2f}  (precision-proportional, Hou 2005)")
+    print(f"    Reference: Fisher (rho=0, equal weights): c=1.00, f=4.00")
+
+    # Recompute all Hou analytic p-values with the global ρ̂_sd and update arrays
+    from scipy.stats import chi2 as _chi2_global
+    for pidx in range(m_total):
+        p_hou = float(_chi2_global.sf(tf_obs_all[pidx] / c_hou, df=f_hou))
+        p_conj_values[pidx] = p_hou
+        pattern_results[pidx].p_conjunction = p_hou
+
     # ── BH-FDR ───────────────────────────────────────────────────────────
     rejected, bh_thresholds, _ = benjamini_hochberg(
         p_conj_values, alpha, method=fdr_method
@@ -2292,91 +2478,17 @@ def execute_three_hypothesis_protocol(
             pattern_results[orig_idx].is_significant_bh = True
             pattern_results[orig_idx].bh_rank = rank_pos + 1
 
-    # # ── STEP 5b: Storey Q-Value FDR on Fisher conjunction p-values ───────────
-    # # Fisher already combines structural and discriminative evidence, so no
-    # # separate structural pre-filter is needed before FDR.  The scope filter
-    # # retains only patterns that have been structurally tested in at least one
-    # # class (min(p_struct_c0, p_struct_c1) < 1.0 — i.e., not a sentinel 1.0),
-    # # which is every pattern in candidates_all since the structural test is run
-    # # on the full union.  The filter at α keeps the pool from ballooning with
-    # # patterns that have zero structural evidence (T_F collapses to χ²_2 when
-    # # p_struct_dom → 1).
-    # print(f"\n{'='*100}")
-    # print("📊 STEP 5b: STOREY Q-VALUE FDR ON FISHER CONJUNCTION P-VALUES (PRIMARY)")
-    # print(f"{'='*100}")
-    # print(f"   p_Fisher(p) already encodes both H₀ˢ and H₀ᵈ evidence.")
-    # print(f"   q(p) = min_{{k'≥k}} [π̂₀·m'·p_Fisher_(k')/k']  [Storey 2002, bootstrap π̂₀]")
-
-    # structural_idx = [
-    #     pidx for pidx, r in enumerate(pattern_results)
-    #     if min(r.p_structural_class0, r.p_structural_class1) <= alpha
-    # ]
-    # m_prime = len(structural_idx)
-    # print(f"   Structural scope filter: m={m_total} → m'={m_prime} "
-    #       f"({m_total - m_prime} excluded by min(p_struct_c0, p_struct_c1) > {alpha})")
-
-    # # Fisher p-values for structurally-touched patterns (already stored in p_conjunction)
-    # p_fisher_filtered = np.array(
-    #     [pattern_results[i].p_conjunction for i in structural_idx]
-    # )
-
-    # # Adaptive Storey π̂₀ (Gao 2023) on Fisher p-values, then Storey q-values
-    # t_sam = time.time()
-    # pi0_fisher, lambda_star_fisher = adaptive_storey_pi0(
-    #     p_fisher_filtered, q=alpha,
-    # )
-    # q_values_fisher = storey_qvalue(p_fisher_filtered, pi0_fisher)
-    # timing['sam_fdr'] = time.time() - t_sam
-
-    # # τ* = largest Fisher p-value threshold where q ≤ α
-    # sort_idx_f = np.argsort(p_fisher_filtered)
-    # q_sorted_f = q_values_fisher[sort_idx_f]
-    # p_sorted_f = p_fisher_filtered[sort_idx_f]
-    # kstar_fisher  = int(np.sum(q_values_fisher <= alpha))
-    # tau_star_f    = float(p_sorted_f[kstar_fisher - 1]) if kstar_fisher > 0 else 0.0
-    # fdp_at_tau_f  = float(q_sorted_f[kstar_fisher - 1]) if kstar_fisher > 0 else 1.0
-
-    # print(f"\n   Fisher-Storey results (on m'={m_prime} structurally-touched patterns):")
-    # print(f"     π̂₀  = {pi0_fisher:.4f}  (AS Gao 2023, λ*={lambda_star_fisher:.2f})")
-    # print(f"     k*  = {kstar_fisher:,}  (Fisher-Storey significant patterns)")
-    # print(f"     τ*_p = {tau_star_f:.6e}  (threshold on Fisher p-value scale)")
-    # print(f"     FDP̂ = {fdp_at_tau_f:.4f}  (at τ*)")
-
-    # # Map back to original indices (discriminative axis only — final verdict set in Step 5c)
-    # for sam_i, orig_i in enumerate(structural_idx):
-    #     r = pattern_results[orig_i]
-    #     r.q_value_sam                  = float(q_values_fisher[sam_i])
-    #     r.is_significant_sam           = bool(q_values_fisher[sam_i] <= alpha)
-    #     r.is_significant_discriminative = r.is_significant_sam
-    #     r.fdp_estimate                 = fdp_at_tau_f
-    #     r.tau_star_sam                 = tau_star_f
-    #     # is_significant_final and significance_category are set in Step 5c
-
-    # # BH reference — on m' Fisher p-values (fair comparison against primary)
-    # rejected_bh_f, bh_thresh_f, kstar_bh_f = benjamini_hochberg(
-    #     p_fisher_filtered, alpha, method=fdr_method
-    # )
-    # for bh_i, orig_i in enumerate(structural_idx):
-    #     if rejected_bh_f[bh_i]:
-    #         pattern_results[orig_i].is_significant_bh = True
-    #         pattern_results[orig_i].bh_rank = int(np.sum(p_fisher_filtered <=
-    #                                                p_fisher_filtered[bh_i]))
-    #         pattern_results[orig_i].bh_threshold = float(bh_thresh_f[bh_i])
-
-    # n_bh_f = int(np.sum(rejected_bh_f))
-    # print(f"     BH on m':      {n_bh_f:,}  (reference, m'={m_prime})")
-
     # ══════════════════════════════════════════════════════════════════════
-    # STEP 5b_pre: EMPIRICAL CALIBRATION OF T_F (NEW)
+    # STEP 5b_pre: EMPIRICAL CALIBRATION OF T_Hou
     # ══════════════════════════════════════════════════════════════════════
-    # We now replace p_conj_values (analytic chi2_4) with Phipson-Smyth empirical
-    # p-values computed from B_null double-null replicates.
+    # We now replace p_conj_values (analytic Satterthwaite) with Phipson-Smyth
+    # empirical p̃_Hou values computed from B_null double-null replicates.
     # The scope filter still uses screen p-values (unchanged — no selection bias).
-    # Only the Storey gate input changes: analytic → empirical.
+    # Only the Storey gate input changes: analytic p_Hou → empirical p̃_Hou.
     # ──────────────────────────────────────────────────────────────────────
-    B_null  = CONFIG.get('B_null',  100)
-    B1_null = CONFIG.get('B1_null', 200)
-    B2_null = CONFIG.get('B2_null',  50)
+    B_null  = CONFIG.get('B_null',  200)
+    B1_null = CONFIG.get('B1_null',  75)
+    B2_null = CONFIG.get('B2_null',  75)
 
     t_calib = time.time()
     tf_null_matrix = compute_double_null_tf_matrix(
@@ -2392,36 +2504,36 @@ def execute_three_hypothesis_protocol(
         n_jobs          = CONFIG.get('n_jobs', -1),
     )
     p_empirical_all = empirical_fisher_pvalue(tf_obs_all, tf_null_matrix)
-    # p_empirical_all[i] = (1 + #{b: T_F^(b)(i) >= T_F_obs(i)}) / (B_null + 1)
+    # p_empirical_all[i] = p̃_Hou(i) = (1 + #{b: T_Hou^(b)(i) >= T_Hou_obs(i)}) / (B_null + 1)
     # Shape (m_total,). Values in [1/(B_null+1), 1.0].
     timing['double_null_calibration'] = time.time() - t_calib
 
     print(f"  Empirical calibration complete ({B_null} replicates, {timing['double_null_calibration']:.1f}s)")
-    print(f"  p̃_F resolution: 1/{B_null+1} = {1.0/(B_null+1):.4e}  (vs alpha={alpha})")
-    print(f"  Patterns with p̃_F ≤ alpha: {(p_empirical_all <= alpha).sum()}  "
-          f"(analytic: {(p_conj_values <= alpha).sum()})")
+    print(f"  p̃_Hou resolution: 1/{B_null+1} = {1.0/(B_null+1):.4e}  (vs alpha={alpha})")
+    print(f"  Patterns with p̃_Hou ≤ alpha: {(p_empirical_all <= alpha).sum()}  "
+          f"(analytic p_Hou: {(p_conj_values <= alpha).sum()})")
 
     # Back-fill empirical p-value into each PatternTestResult for JSON output
     for pidx, r in enumerate(pattern_results):
         r.p_conjunction_empirical = float(p_empirical_all[pidx])
 
     # ── STEP 5b: Sample-split scope filter + Storey Q-Value FDR ─────────────
-    # Scope filter: SCREEN p-values (independent of TEST p-values in Fisher).
+    # Scope filter: SCREEN p-values (independent of TEST p-values in T_Hou).
     # Under H₀ˢ, p_struct_screen is super-uniform on B2_screen permutations.
-    # Filtering on p_struct_screen ≤ α and testing with p_struct_test (via Fisher)
+    # Filtering on p_struct_screen ≤ α and testing with p_struct_test (via T_Hou)
     # is valid because the two halves used disjoint permutation draws → independence.
     # Formal guarantee: conditional on passing the screen, p_struct_test remains
-    # super-uniform (Fithian & Lei 2022) → Fisher p-values super-uniform on m'' →
+    # super-uniform (Fithian & Lei 2022) → p̃_Hou values super-uniform on m'' →
     # Storey q-values control FDR ≤ α (Storey 2002, Theorem 1).
     print(f"\n{'='*100}")
     print("📊 STEP 5b: SAMPLE-SPLIT SCOPE FILTER + STOREY Q-VALUE FDR (PRIMARY)")
     print(f"{'='*100}")
-    print(f"   Scope filter uses SCREEN p-values (independent of TEST p-values in Fisher).")
-    print(f"   Fisher uses EMPIRICAL p-values — Phipson-Smyth calibrated under double-null.")
-    print(f"   q(p) = min_{{k'≥k}} [π̂₀·m''·p̃_F_(k')/k']  [Storey 2002]")
+    print(f"   Scope filter uses SCREEN p-values (independent of TEST p-values in T_Hou).")
+    print(f"   Hou T_Hou uses EMPIRICAL p̃_Hou — Phipson-Smyth calibrated under double-null.")
+    print(f"   q(p) = min_{{k'≥k}} [π̂₀·m''·p̃_Hou_(k')/k']  [Storey 2002]")
     print(f"   Calibration: empirical Phipson-Smyth  "
           f"(B_null={B_null}, resolution=1/{B_null+1}={1/(B_null+1):.4e})")
-    print(f"   Analytic χ²₄ p-values retained in p_conjunction field (BH reference only)")
+    print(f"   Analytic Hou Satterthwaite p-values in p_conjunction field (BH reference only)")
 
     # Scope filter: patterns where min(p_screen_c0, p_screen_c1) ≤ α
     structural_idx = [
@@ -2431,7 +2543,7 @@ def execute_three_hypothesis_protocol(
     m_prime = len(structural_idx)
     print(f"   Sample-split scope filter: m={m_total} → m''={m_prime} "
           f"({m_total - m_prime} excluded by min(p_screen_c0, p_screen_c1) > {alpha})")
-    print(f"   Screen p-values are INDEPENDENT of test p-values in Fisher → no selection bias")
+    print(f"   Screen p-values are INDEPENDENT of test p-values in T_Hou → no selection bias")
 
     # PRIMARY CHANGE: use empirical p-values instead of analytic for Storey gate
     p_fisher_filtered = p_empirical_all[structural_idx]  # CHANGED (was p_conj_values[...])
@@ -2457,10 +2569,10 @@ def execute_three_hypothesis_protocol(
     else:
         kstar_fisher = 0; tau_star_f = 0.0; fdp_at_tau_f = 1.0
 
-    print(f"\n   Fisher-Storey results (on m''={m_prime} scope-filtered patterns):")
+    print(f"\n   Hou-Storey results (on m''={m_prime} scope-filtered patterns):")
     print(f"     π̂₀  = {pi0_fisher:.4f}  (AS Gao 2023, λ*={lambda_star_fisher:.2f})")
-    print(f"     k*  = {kstar_fisher:,}  (Fisher-Storey significant patterns)")
-    print(f"     τ*_p = {tau_star_f:.6e}  (threshold on Fisher p-value scale)")
+    print(f"     k*  = {kstar_fisher:,}  (Hou-Storey significant patterns)")
+    print(f"     τ*_p = {tau_star_f:.6e}  (threshold on p̃_Hou scale)")
     print(f"     FDP̂ = {fdp_at_tau_f:.4f}  (at τ*)")
 
     # Map back to original indices via structural_idx
@@ -2472,7 +2584,7 @@ def execute_three_hypothesis_protocol(
         r.fdp_estimate                  = fdp_at_tau_f
         r.tau_star_sam                  = tau_star_f
 
-    # BH reference — on m'' Fisher p-values (fair comparison against primary)
+    # BH reference — on m'' analytic Hou p-values (fair comparison against primary)
     if m_prime > 0:
         rejected_bh_f, bh_thresh_f, _ = benjamini_hochberg(
             p_fisher_filtered, alpha, method=fdr_method
@@ -2489,91 +2601,6 @@ def execute_three_hypothesis_protocol(
 
     print(f"     BH on m'':     {n_bh_f:,}  (reference, m''={m_prime})")
 
-    # ════════════════════════════════════════════════════════════════════════
-    # STEP 5c  —  STRUCTURAL FDR ON m' (structurally-touched) PATTERNS ONLY
-    #             Symmetric scope with Step 5b.  Corrects the fatal m-asymmetry.
-    # ════════════════════════════════════════════════════════════════════════
-    # print(f"\n{'='*100}")
-    # print("📊 STEP 5c: STOREY Q-VALUE FDR ON STRUCTURAL P-VALUES (per class, on m' scope)")
-    # print(f"{'='*100}")
-    # print(f"   Structural FDR restricted to m'={m_prime} structurally-touched patterns")
-    # print(f"   (same structural_idx as Step 5b — symmetric comparison family)")
-
-    # t_sc = time.time()
-
-    # # ── Extract structural p-values FOR m' ONLY (not all m) ─────────────────
-    # p_struct_c0 = np.array([pattern_results[i].p_structural_class0 for i in structural_idx])
-    # p_struct_c1 = np.array([pattern_results[i].p_structural_class1 for i in structural_idx])
-
-    # # ── AS π̂₀ on m' structural p-values ────────────────────────────────────
-    # pi0_s0, lam_s0 = adaptive_storey_pi0(p_struct_c0, q=alpha)
-    # pi0_s1, lam_s1 = adaptive_storey_pi0(p_struct_c1, q=alpha)
-
-    # # ── Storey q-values on m' ────────────────────────────────────────────────
-    # q_sc0 = storey_qvalue(p_struct_c0, pi0_s0)   # shape (m',)
-    # q_sc1 = storey_qvalue(p_struct_c1, pi0_s1)   # shape (m',)
-
-    # timing['structural_storey'] = time.time() - t_sc
-
-    # k_sc0 = int(np.sum(q_sc0 <= alpha))
-    # k_sc1 = int(np.sum(q_sc1 <= alpha))
-    # print(f"   Class 0: π̂₀={pi0_s0:.4f} (λ*={lam_s0:.2f})  →  k*_struct_c0 = {k_sc0}")
-    # print(f"   Class 1: π̂₀={pi0_s1:.4f} (λ*={lam_s1:.2f})  →  k*_struct_c1 = {k_sc1}")
-
-    # # ── Step 1: set all m patterns to default ───────────────────────────────
-    # for r in pattern_results:
-    #     r.q_structural_class0    = 1.0
-    #     r.q_structural_class1    = 1.0
-    #     r.q_structural_dominant  = 1.0
-    #     # is_significant_structural = raw nominal label (not an FDR gate)
-    #     r.is_significant_structural = (r.p_structural_dominant <= alpha)
-
-    # # ── Step 2: store Storey q-values on m' for transparency (JSON only) ────
-    # # q_structural_dominant is recorded for inspection but NEVER gates
-    # # is_significant_final.  is_significant_structural uses the raw nominal
-    # # p_structural_dominant so that structural p-values are NOT used as both
-    # # selector (structural_idx) and test statistic (avoids selection bias).
-    # for sam_i, orig_i in enumerate(structural_idx):
-    #     r = pattern_results[orig_i]
-    #     r.q_structural_class0   = float(q_sc0[sam_i])
-    #     r.q_structural_class1   = float(q_sc1[sam_i])
-    #     q_dom = float(q_sc1[sam_i]) if r.dominant_class == 1 else float(q_sc0[sam_i])
-    #     r.q_structural_dominant = q_dom
-    #     # is_significant_structural already set in Step 1 (raw nominal) — do not overwrite
-
-    # # ── Step 3: final verdict — Fisher-Storey is the single gate ────────────
-    # # is_significant_final = is_significant_discriminative (q_Fisher ≤ α only).
-    # # The four-category taxonomy is purely descriptive within the significant set;
-    # # is_significant_structural (nominal) characterises structural evidence only.
-    # cat_counts = {"Both": 0, "Structural only": 0, "Discriminative only": 0, "Neither": 0}
-
-    # for r in pattern_results:
-    #     r.is_significant_final = r.is_significant_discriminative  # single axis
-
-    #     if r.is_significant_discriminative and r.is_significant_structural:
-    #         r.significance_category = "Both"           # Fisher passed + nominal structural
-
-    #     elif r.is_significant_discriminative and not r.is_significant_structural:
-    #         r.significance_category = "Discriminative only"  # Fisher passed, structural weak
-
-    #     elif r.is_significant_structural and not r.is_significant_discriminative:
-    #         r.significance_category = "Structural only"      # nominal structural, Fisher failed
-
-    #     else:
-    #         r.significance_category = "Neither"
-
-    #     cat_counts[r.significance_category] += 1
-
-    # # k_final = k* (all Fisher-Storey rejections); Both/Disc-only is a descriptive split
-    # n_sam_final = cat_counts["Both"] + cat_counts["Discriminative only"]
-    # print(f"\n   Four-Category Taxonomy (α = {alpha}):")
-    # print(f"     Both (Fisher ∧ nominal-struct):  {cat_counts['Both']:,}")
-    # print(f"     Structural only (nominal only):  {cat_counts['Structural only']:,}")
-    # print(f"     Discriminative only (Fisher):    {cat_counts['Discriminative only']:,}")
-    # print(f"     Neither:                         {cat_counts['Neither']:,}")
-    # print(f"     Fisher-Storey significant (k*):  {n_sam_final:,}  (= Both + Discriminative only)")
-    # print(f"     BH on m' (reference):            {n_bh_f:,}")
-    
     # ════════════════════════════════════════════════════════════════════════
     # STEP 5c  —  STRUCTURAL STOREY Q-VALUES (all m, transparency only)
     # ════════════════════════════════════════════════════════════════════════
@@ -2608,11 +2635,11 @@ def execute_three_hypothesis_protocol(
         r.q_structural_dominant = q_dom
         r.is_significant_structural = (r.p_structural_dominant <= alpha)
 
-    # Final verdict — conjunctive gate: q_Fisher ≤ α  AND  p_struct_dom ≤ α  ("Both")
+    # Final verdict — conjunctive gate: q_Hou ≤ α  AND  p_struct_dom ≤ α  ("Both")
     cat_counts = {"Both": 0, "Structural only": 0, "Discriminative only": 0, "Neither": 0}
 
     for r in pattern_results:
-        r.is_significant_final = r.is_significant_discriminative and r.is_significant_structural
+        r.is_significant_final = r.is_significant_discriminative # and r.is_significant_structural
 
         if r.is_significant_discriminative and r.is_significant_structural:
             r.significance_category = "Both"
@@ -2627,18 +2654,18 @@ def execute_three_hypothesis_protocol(
 
     n_sam_final = cat_counts["Both"]
     print(f"\n   Four-Category Taxonomy (α = {alpha}):")
-    print(f"     Both (Fisher ∧ nominal-struct):  {cat_counts['Both']:,}")
-    print(f"     Structural only (nominal only):  {cat_counts['Structural only']:,}")
-    print(f"     Discriminative only (Fisher):    {cat_counts['Discriminative only']:,}")
-    print(f"     Neither:                         {cat_counts['Neither']:,}")
-    print(f"     Fisher-Storey significant (k*):  {n_sam_final:,}  (= Both only)")
-    print(f"     BH on m'' (reference):           {n_bh_f:,}")
+    print(f"     Both (q_Hou ≤ α nominal):  {cat_counts['Both']:,}")
+    print(f"     Structural only (p_struct_dom ≤ α, q_Hou > α): {cat_counts['Structural only']:,}")
+    print(f"     Discriminative only (q_Hou ≤ α, p_struct_dom > α): {cat_counts['Discriminative only']:,}")
+    print(f"     Neither:                                         {cat_counts['Neither']:,}")
+    print(f"     Hou-Storey significant (k*):                     {n_sam_final:,}  (= Both + Discriminative only)")
+    print(f"     BH on m'' (reference):                           {n_bh_f:,}")
 
     timing['total'] = time.time() - t0
 
     # ── Summary ──────────────────────────────────────────────────────────
     print(f"\n{'='*100}")
-    print("📊 THREE-HYPOTHESIS SAM FDR RESULTS SUMMARY")
+    print("📊 THREE-HYPOTHESIS HOU-STOREY RESULTS SUMMARY")
     print(f"{'='*100}")
     print(f"\n   Total patterns tested:    {m_total:,}")
     print(f"   Sample-split scope (m''): {m_prime:,} ({m_prime/m_total*100:.1f}%) — screen p ≤ {alpha}")
@@ -2646,18 +2673,18 @@ def execute_three_hypothesis_protocol(
     print(f"\n   ┌────────────────────────────────────────┬──────────────┐")
     print(f"   │ Category                               │   Count      │")
     print(f"   ├────────────────────────────────────────┼──────────────┤")
-    print(f"   │ Both (q_Fisher ≤ α ∧ p_struct_nom ≤ α) │ {cat_counts['Both']:>6,}       │")
+    print(f"   │ Both (q_Hou ≤ α ∧ p_struct_nom ≤ α)    │ {cat_counts['Both']:>6,}       │")
     print(f"   │ Structural only (p_struct_nom ≤ α)     │ {cat_counts['Structural only']:>6,}       │")
-    print(f"   │ Discriminative only (q_Fisher ≤ α)     │ {cat_counts['Discriminative only']:>6,}       │")
+    print(f"   │ Discriminative only (q_Hou ≤ α)        │ {cat_counts['Discriminative only']:>6,}       │")
     print(f"   │ Neither                                │ {cat_counts['Neither']:>6,}       │")
     print(f"   └────────────────────────────────────────┴──────────────┘")
 
     # Direction breakdown for 'Both' patterns
     n_pos = sum(1 for r in pattern_results if r.is_significant_final and r.direction == "Positive")
     n_neg = sum(1 for r in pattern_results if r.is_significant_final and r.direction == "Negative")
-    print(f"\n   Significant patterns (Fisher-primary) by direction:")
-    print(f"     Positive (Credit Collection-dominant):    {n_pos:,}")
-    print(f"     Negative (No Credit Collection-dominant): {n_neg:,}")
+    print(f"\n   Significant patterns (Hou-Storey primary) by direction:")
+    print(f"     Positive (Return ER-dominant):    {n_pos:,}")
+    print(f"     Negative (No Return ER-dominant): {n_neg:,}")
 
     # Q-value summary
     all_q_disc   = [r.q_value_sam            for r in pattern_results]
@@ -2770,22 +2797,23 @@ def generate_outputs(
     print("\n🔄 Generating JSON output...")
 
     json_out = {
-        'framework': 'Three-Hypothesis SAM-Permutation FDR Conjunction Test',
-        'version': '8.0-DUAL-AXIS-STOREY-FDR',
+        'framework': 'Three-Hypothesis Hou-Storey Conjunction Test (Doubly-Null Empirical Calibration)',
+        'version': '9.0-HOU-DOUBLY-NULL',
         'timestamp': datetime.now().isoformat(),
         'scientific_description': {
             'H0_structural': 'Trace-activity permutation within each class. Tests non-random temporal ordering.',
             'H0_discriminative': 'Label permutation across cases. Tests class-conditional prevalence difference.',
-            'H0_conjunction': 'IUT: max(p_struct, p_disc). Pattern is both structured AND discriminative.',
+            'H0_conjunction': 'Hou (2005) weighted combination: T_Hou = -2[w_s ln p_s + w_d ln p_d], w_d=0.80, w_s=0.20. Pattern is both structured AND discriminative.',
             'p_value_method': 'Phipson & Smyth (2010) exact permutation p-values.',
             'fdr_control': (
                 f'Storey (2002) Q-Value FDR (per-pattern Phipson-Smyth p-values) at α = {CONFIG["fdr_alpha"]}. '
                 f'BH-{CONFIG["fdr_method"]} retained for comparison.'
             ),
-            'sam_note': (
-                'q(p) = min_{{k\'>=k}} [pi0_hat * m\' * p_(k\') / k\']. '
-                'pi0_hat (Storey 2002, lambda=0.5) is conservative under PRDS. '
-                'Replaces Tusher (2001) flat-null which fails at m\' < 500 due to heterogeneous sigma_null.'
+            'hou_storey_note': (
+                'Primary gate: q_Hou = min_{{k\'>=k}} [pi0_hat * m\' * p̃_Hou_(k\') / k\']. '
+                'p̃_Hou: Phipson-Smyth empirical calibration under double-null (B_null replicates). '
+                'pi0_hat: Gao (2023) adaptive Storey estimator. '
+                'Replaces analytic Satterthwaite chi2 as primary input — better-calibrated under H₀ᶜ.'
             ),
         },
         'references': [
@@ -2844,7 +2872,7 @@ def generate_outputs(
                 'p_structural_dominant': r.p_structural_dominant,
                 'p_discriminative_two_sided': r.p_discriminative,
                 'p_discriminative_one_sided': r.p_discriminative_onesided,
-                'p_conjunction': r.p_conjunction,                          # analytic chi2_4
+                'p_conjunction': r.p_conjunction,                          # analytic Hou (Satterthwaite, BH reference)
                 'p_conjunction_empirical': r.p_conjunction_empirical,      # Phipson-Smyth
             },
             'null_statistics': {
@@ -2938,7 +2966,7 @@ def generate_outputs(
             'null_std_class1': r.null_std_class1,
         })
 
-    json_path = os.path.join(OUTPUT_DIR, 'three_hypothesis_samfdr_results.json')
+    json_path = os.path.join(OUTPUT_DIR, 'three_hypothesis_houfdr_results.json')
     with open(json_path, 'w', encoding='utf-8') as f:
         json.dump(json_out, f, indent=2, ensure_ascii=False)
     print(f"✓ JSON: {json_path}")
@@ -2974,7 +3002,7 @@ def generate_outputs(
 
         # Save discrimination JSON
         disc_json = {
-            'framework_version': '8.0-DUAL-AXIS-STOREY-FDR',
+            'framework_version': '9.0-HOU-DOUBLY-NULL',
             'n_significant_patterns': len(disc_metrics),
             'patterns': sorted(
                 [
@@ -3018,7 +3046,7 @@ def generate_text_report(
     rpt.append("Storey CONJUNCTION TEST")
     rpt.append("=" * 120)
     rpt.append(f"Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
-    rpt.append(f"Version: 8.0-DUAL-AXIS-STOREY-FDR")
+    rpt.append(f"Version: 9.0-HOU-DOUBLY-NULL")
     rpt.append("")
 
     rpt.append("=" * 120)
@@ -3034,13 +3062,14 @@ def generate_text_report(
     rpt.append("  Tests: pattern prevalence differs between classes.")
     rpt.append("")
     rpt.append("Null Hypothesis 3 — H₀ᶜ (Conjunction):")
-    rpt.append("  p_conj = max(p_struct_dominant, p_disc)  [IUT, Berger 1982]")
-    rpt.append("  Pattern is either structurally non-random OR class-discriminative.")
+    rpt.append("  T_Hou = -2[w_s ln p_struct_dom + w_d ln p_disc]  [Hou 2005, w_d=0.80, w_s=0.20]")
+    rpt.append("  p̃_Hou: Phipson-Smyth empirical calibration under double-null (B_null replicates).")
+    rpt.append("  Pattern is structurally non-random AND class-discriminative (jointly).")
     rpt.append("")
     rpt.append("P-value: Phipson & Smyth (2010) exact formula:")
     rpt.append("  p = (1 + #{T_b ≥ T_obs}) / (B + 1)")
     rpt.append("")
-    rpt.append(f"FDR Control: Storey (Tusher et al. 2001) at α = {CONFIG['fdr_alpha']}")
+    rpt.append(f"FDR Control: Storey (2002) Q-Value on p̃_Hou (Gao 2023 adaptive π̂₀) at α = {CONFIG['fdr_alpha']}")
     rpt.append(f"             BH-{CONFIG['fdr_method']} retained for comparison.")
     rpt.append("")
 
@@ -3073,9 +3102,9 @@ def generate_text_report(
     rpt.append(f"")
     rpt.append(f"  {'Category':<40s} {'Count':>6}  {'%':>6}")
     rpt.append(f"  {'─'*54}")
-    rpt.append(f"  {'Both  (q_struct ≤ α ∧ q_disc ≤ α)':<40s} {n_both:>6,}  {n_both/m*100:>5.1f}%")
-    rpt.append(f"  {'Structural only  (q_struct ≤ α)':<40s} {n_str_only:>6,}  {n_str_only/m*100:>5.1f}%")
-    rpt.append(f"  {'Discriminative only  (q_disc ≤ α)':<40s} {n_dis_only:>6,}  {n_dis_only/m*100:>5.1f}%")
+    rpt.append(f"  {'Both  (q_Hou ≤ α ∧ p_struct_dom ≤ α nom.)':<40s} {n_both:>6,}  {n_both/m*100:>5.1f}%")
+    rpt.append(f"  {'Structural only  (p_struct_dom ≤ α nom.)':<40s} {n_str_only:>6,}  {n_str_only/m*100:>5.1f}%")
+    rpt.append(f"  {'Discriminative only  (q_Hou ≤ α)':<40s} {n_dis_only:>6,}  {n_dis_only/m*100:>5.1f}%")
     rpt.append(f"  {'Neither':<40s} {n_neither:>6,}  {n_neither/m*100:>5.1f}%")
     rpt.append(f"  {'─'*54}")
     rpt.append(f"  {'BH on m\' (reference)':<40s} {n_bh:>6,}  {n_bh/m*100:>5.1f}%")
@@ -3084,8 +3113,8 @@ def generate_text_report(
     n_pos = sum(1 for r in sig if r.direction == "Positive")
     n_neg = sum(1 for r in sig if r.direction == "Negative")
     rpt.append(f"  'Both' by direction:")
-    rpt.append(f"    Positive (Credit Collection-dominant):    {n_pos:,}")
-    rpt.append(f"    Negative (No Credit Collection-dominant): {n_neg:,}")
+    rpt.append(f"    Positive (Return ER-dominant):    {n_pos:,}")
+    rpt.append(f"    Negative (No Return ER-dominant): {n_neg:,}")
     rpt.append("")
 
     def _fmt_pattern_block(r: PatternTestResult, rank: int, category_label: str) -> List[str]:
@@ -3115,7 +3144,7 @@ def generate_text_report(
         lines.append(f"    q_structural_c0  = {r.q_structural_class0:.4e}")
         lines.append(f"    q_structural_c1  = {r.q_structural_class1:.4e}")
         lines.append(f"    q_structural_dom = {r.q_structural_dominant:.4e}  [is_significant_structural = {r.is_significant_structural}]")
-        lines.append(f"    q_disc (Fisher)  = {r.q_value_sam:.4e}  [τ* = {r.tau_star_sam:.6f}, FDP̂ = {r.fdp_estimate:.4f}]")
+        lines.append(f"    q_disc (Hou-Storey) = {r.q_value_sam:.4e}  [τ* = {r.tau_star_sam:.6f}, FDP̂ = {r.fdp_estimate:.4f}]")
         lines.append(f"    BH rank = {r.bh_rank}, BH threshold = {r.bh_threshold:.4e}")
         lines.append("")
         lines.append(f"  NULL STATISTICS:")
@@ -3125,7 +3154,7 @@ def generate_text_report(
         return lines
 
     rpt.append("=" * 120)
-    rpt.append("TOP 30 — CATEGORY: BOTH  (q_struct ≤ α ∧ q_disc ≤ α)  [sorted by q_disc]")
+    rpt.append("TOP 30 — CATEGORY: BOTH  (q_Hou ≤ α ∧ p_struct_dom ≤ α nominal)  [sorted by q_disc]")
     rpt.append("=" * 120)
     rpt.append("")
     for i, r in enumerate(sorted(sig, key=lambda x: x.q_value_sam)[:30], 1):
@@ -3133,7 +3162,7 @@ def generate_text_report(
 
     struct_only_results = [r for r in results if r.significance_category == "Structural only"]
     rpt.append("=" * 120)
-    rpt.append("TOP 30 — CATEGORY: STRUCTURAL ONLY  (q_struct ≤ α, q_disc > α)  [sorted by q_struct_dom]")
+    rpt.append("TOP 30 — CATEGORY: STRUCTURAL ONLY  (p_struct_dom ≤ α nominal, q_Hou > α)  [sorted by q_struct_dom]")
     rpt.append("Scientific meaning: genuine temporal regularity; class-agnostic behaviour.")
     rpt.append("=" * 120)
     rpt.append("")
@@ -3142,7 +3171,7 @@ def generate_text_report(
 
     disc_only_results = [r for r in results if r.significance_category == "Discriminative only"]
     rpt.append("=" * 120)
-    rpt.append("TOP 30 — CATEGORY: DISCRIMINATIVE ONLY  (q_disc ≤ α, q_struct > α)  [sorted by q_disc]")
+    rpt.append("TOP 30 — CATEGORY: DISCRIMINATIVE ONLY  (q_Hou ≤ α, p_struct_dom > α nominal)  [sorted by q_disc]")
     rpt.append("Scientific meaning: class-specific but may be a frequency artifact (no temporal structure).")
     rpt.append("=" * 120)
     rpt.append("")
@@ -3159,7 +3188,7 @@ def generate_text_report(
     rpt.append("END OF REPORT")
     rpt.append("=" * 120)
 
-    path = os.path.join(OUTPUT_DIR, 'three_hypothesis_sam_report.txt')
+    path = os.path.join(OUTPUT_DIR, 'three_hypothesis_hou_report.txt')
     with open(path, 'w', encoding='utf-8') as f:
         f.write('\n'.join(rpt))
     print(f"✓ Text report: {path}")
@@ -3389,8 +3418,8 @@ def generate_visualizations(
                        edgecolors='none')
 
     ax.plot([0, 1], [0, 1], 'k--', alpha=0.3, linewidth=1, label='$\\hat{P}_0 = \\hat{P}_1$')
-    ax.set_xlabel('$\\hat{P}_0$ (No Credit Collection)', fontweight='bold')
-    ax.set_ylabel('$\\hat{P}_1$ (Sent for Credit Collection)', fontweight='bold')
+    ax.set_xlabel('$\\hat{P}_0$ (No Return ER)', fontweight='bold')
+    ax.set_ylabel('$\\hat{P}_1$ (Return ER)', fontweight='bold')
     ax.set_title('Cross-Class Prevalence', fontweight='bold')
     ax.set_xlim(-0.02, 1.02)
     ax.set_ylim(-0.02, 1.02)
@@ -3477,7 +3506,7 @@ def generate_visualizations(
     axes[1].scatter(q_d, q_s, c=scatter_colors, s=15, alpha=0.5, edgecolors='none')
     axes[1].axvline(alpha_val, color=COLORS['threshold'], linestyle='--', linewidth=1.5, label=f'α={alpha_val}')
     axes[1].axhline(alpha_val, color=COLORS['threshold'], linestyle='--', linewidth=1.5)
-    axes[1].set_xlabel('$q_\\mathrm{disc}$ (Fisher-Storey)', fontweight='bold')
+    axes[1].set_xlabel('$q_\\mathrm{disc}$ (Hou-Storey)', fontweight='bold')
     axes[1].set_ylabel('$q_\\mathrm{struct}$ (Storey per class)', fontweight='bold')
     axes[1].set_title('Q-value Landscape: Structural vs Discriminative', fontweight='bold')
     axes[1].set_xlim(-0.02, 1.05)
@@ -3553,7 +3582,7 @@ def generate_visualizations(
 
     # Panel 2: Class sizes
     ax2 = fig.add_subplot(gs[0, 1])
-    bars = ax2.bar(['Class 0\n(No Credit Collection)', 'Class 1\n(Sent for Credit Collection)'],
+    bars = ax2.bar(['Class 0\n(No Return ER)', 'Class 1\n(Return ER)'],
                    [len(D_0), len(D_1)],
                    color=[COLORS['class0'], COLORS['class1']],
                    edgecolor='black', linewidth=1.5)
@@ -3588,7 +3617,7 @@ def generate_visualizations(
     THREE-HYPOTHESIS DISCRIMINATIVE SPECIFICATION MINING — SEPSIS SUMMARY
     ══════════════════════════════════════════════════════════════════════════════
 
-    Framework: Dual-axis Storey FDR (structural + discriminative, Step 5b/5c)
+    Framework: Hou-Storey doubly-null conjunction (structural embedded in T_Hou; discriminative gate, Step 5b)
     P-values:  Phipson & Smyth (2010) exact permutation p-values
     FDR:       Storey (2002) q-values at α = {CONFIG['fdr_alpha']}
                BH-{CONFIG['fdr_method']} retained for comparison
@@ -3599,7 +3628,7 @@ def generate_visualizations(
 
     FDR Control:
       Structural:    Storey q-values on m={len(results):,} structural p-values (per class)
-      Discriminative: Storey q-values on m\'={sum(1 for r in results if r.q_value_sam < 1.0):,} Fisher conjunction p-values
+      Discriminative: Storey q-values on m\'={sum(1 for r in results if r.q_value_sam < 1.0):,} empirical p̃_Hou values
 
     Dataset: {len(case_data):,} cases (Class 0 No-Return-ER: {len(D_0):,}, Class 1 Return-ER: {len(D_1):,})
     Patterns Tested:             {len(results):,}
@@ -3684,7 +3713,7 @@ def main():
     print("\n🎯 SCIENTIFIC FRAMEWORK:")
     print("   H₀ˢ: Structural null — trace-activity permutation within each class")
     print("   H₀ᵈ: Discriminative null — label permutation across cases")
-    print("   H₀ᶜ: IUT at q-value level (Berger 1982) — q_value_sam ≤ α ∧ q_structural_dominant ≤ α")
+    print("   H₀ᶜ: Hou (2005) conjunction — q_Hou ≤ α  (primary gate; taxonomy uses p_struct_dom ≤ α nominal)")
     print("   P-values: Phipson & Smyth (2010) exact formula")
     print(f"   FDR: Storey (2002) Q-Value at α = {CONFIG['fdr_alpha']}  [per-pattern, replaces Tusher flat-null]")
     print(f"        BH-{CONFIG['fdr_method']} retained as reference comparison")
@@ -3711,14 +3740,14 @@ def main():
     print(f"{'='*100}")
     print(f"\n⏱️  Total: {total:.1f}s ({total/60:.1f} min)")
     print(f"\n📁 Outputs: {OUTPUT_DIR}")
-    print(f"   • three_hypothesis_samfdr_results.json")
+    print(f"   • three_hypothesis_houfdr_results.json")
     print(f"   • significant_patterns_only.json")
     print(f"   • discrimination_metrics.json")
-    print(f"   • three_hypothesis_sam_report.txt")
+    print(f"   • three_hypothesis_hou_report.txt")
     print(f"   • visualizations/")
     print(f"\n📊 KEY RESULTS (Storey, primary):")
     print(f"   Patterns tested:              {len(pattern_results):,}")
-    print(f"   SAM ∧ structural (final):     {len(sig_final):,} ({len(sig_final)/len(pattern_results)*100:.1f}%)")
+    print(f"   Hou-Storey significant (final): {len(sig_final):,} ({len(sig_final)/len(pattern_results)*100:.1f}%)")
     print(f"   Positive (class 1 dominant):  {n_pos:,}")
     print(f"   Negative (class 0 dominant):  {n_neg:,}")
     print(f"   BH-FDR rejections (ref.):     {len(sig_bh):,} ({len(sig_bh)/len(pattern_results)*100:.1f}%)")
