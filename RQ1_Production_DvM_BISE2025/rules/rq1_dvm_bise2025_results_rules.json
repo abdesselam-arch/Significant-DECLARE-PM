@@ -1,0 +1,115 @@
+{
+  "rq1_version": "2.0",
+  "method": "BISE2025_DvM",
+  "log_name": "Production",
+  "timestamp": "2026-05-22T01:19:03.824434",
+  "output_sets": [
+    "ripper_rules",
+    "dt_rules",
+    "ripper+dt_rules"
+  ],
+  "config": {
+    "B_NULL": 200,
+    "ALPHA": 0.05,
+    "BASE_SEED": 20260521,
+    "N_JOBS": 4,
+    "coverage_threshold": 20,
+    "RIPPER_K_GRID": [
+      0,
+      4,
+      6,
+      8,
+      10,
+      16,
+      18
+    ],
+    "DT_DEPTH_GRID": [
+      5,
+      10,
+      15,
+      20,
+      25,
+      30,
+      35,
+      60,
+      80
+    ]
+  },
+  "R_obs_all": {
+    "sel": 204,
+    "ripper": 6,
+    "dt": 39,
+    "union": 42
+  },
+  "metrics": {
+    "ripper": {
+      "R_obs": 6,
+      "E_V_b": 2.445,
+      "FDR_emp": 0.4075,
+      "PCER_emp": 0.0013682148852825963,
+      "FWER_emp": 1.0,
+      "FDR_CI_lower": 0.38,
+      "FDR_CI_upper": 0.4383333333333333,
+      "B_null": 200,
+      "m_total": 1787,
+      "alpha": 0.05,
+      "controls_FDR": false
+    },
+    "dt": {
+      "R_obs": 39,
+      "E_V_b": 50.62,
+      "FDR_emp": 1.297948717948718,
+      "PCER_emp": 0.028326804700615556,
+      "FWER_emp": 1.0,
+      "FDR_CI_lower": 1.2807692307692307,
+      "FDR_CI_upper": 1.3155546304433887,
+      "B_null": 200,
+      "m_total": 1787,
+      "alpha": 0.05,
+      "controls_FDR": false
+    },
+    "union": {
+      "R_obs": 42,
+      "E_V_b": 51.725,
+      "FDR_emp": 1.2315476190476191,
+      "PCER_emp": 0.02894515948517068,
+      "FWER_emp": 1.0,
+      "FDR_CI_lower": 1.21562493234176,
+      "FDR_CI_upper": 1.2471523799468838,
+      "B_null": 200,
+      "m_total": 1787,
+      "alpha": 0.05,
+      "controls_FDR": false
+    }
+  },
+  "rule_counts_orig": {
+    "ripper": 2,
+    "dt": 25,
+    "union": 27
+  },
+  "null_replicate_summary": {
+    "ripper": {
+      "mean_V_b": 2.445,
+      "std_V_b": 1.2070521943975745,
+      "max_V_b": 8,
+      "n_zero_V_b": 0
+    },
+    "dt": {
+      "mean_V_b": 50.62,
+      "std_V_b": 4.872945721019269,
+      "max_V_b": 65,
+      "n_zero_V_b": 0
+    },
+    "union": {
+      "mean_V_b": 51.725,
+      "std_V_b": 4.90095653928904,
+      "max_V_b": 66,
+      "n_zero_V_b": 0
+    }
+  },
+  "timing": {
+    "original_DvM_seconds": 5.238558292388916,
+    "null_permutations_seconds": 258.2281742095947,
+    "total_seconds": 263.46673250198364
+  }
+}

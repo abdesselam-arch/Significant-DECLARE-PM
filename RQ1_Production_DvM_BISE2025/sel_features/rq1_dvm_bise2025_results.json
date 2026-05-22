@@ -1,0 +1,58 @@
+{
+  "rq1_version": "2.0",
+  "method": "BISE2025_DvM",
+  "output_set": "sel_features",
+  "log_name": "Production",
+  "timestamp": "2026-05-22T01:19:03.806793",
+  "config": {
+    "B_NULL": 200,
+    "ALPHA": 0.05,
+    "BASE_SEED": 20260521,
+    "N_JOBS": 4,
+    "coverage_threshold": 20,
+    "support_threshold": 0.0,
+    "fisher_eps": 1e-10,
+    "R_obs_sel": 204,
+    "m_total": 1787
+  },
+  "R_obs": 204,
+  "metrics": {
+    "R_obs": 204,
+    "E_V_b": 232.355,
+    "FDR_emp": 1.1389950980392156,
+    "PCER_emp": 0.13002518186905426,
+    "FWER_emp": 1.0,
+    "FDR_CI_lower": 1.1163960801353914,
+    "FDR_CI_upper": 1.1577833168735847,
+    "B_null": 200,
+    "m_total": 1787,
+    "alpha": 0.05,
+    "controls_FDR": false
+  },
+  "null_replicate_summary": {
+    "mean_V_b": 232.355,
+    "std_V_b": 31.225614085234575,
+    "max_V_b": 350,
+    "n_zero_V_b": 0
+  },
+  "diagnostics": {
+    "m_total": 1787,
+    "R_obs_sel": 204,
+    "R_obs_ripper": 6,
+    "R_obs_dt": 39,
+    "R_obs_union": 42,
+    "coverage_threshold": 20,
+    "fisher_mean": 0.02464537594622819,
+    "fisher_median": 0.0052139037433155165,
+    "fisher_min": 0.0,
+    "fisher_max": 0.47959584421384516,
+    "n_nonzero_fisher": 1710,
+    "n_zero_fisher": 77,
+    "n_nonfinite": 0
+  },
+  "timing": {
+    "original_DvM_seconds": 5.238558292388916,
+    "null_permutations_seconds": 258.2281742095947,
+    "total_seconds": 263.46673250198364
+  }
+}

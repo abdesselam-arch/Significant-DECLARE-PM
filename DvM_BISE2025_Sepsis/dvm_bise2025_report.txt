@@ -2,7 +2,7 @@
 DvM — Business Process Deviance Mining: Sequential & Declarative Patterns
 Reference: Di Francescomarino et al. (2025), BISE 67(6):877–894
 ========================================================================================================================
-Generated:  2026-05-21 14:06:09
+Generated:  2026-05-22 15:00:54
 Classifier: RipperK (Wittgenstein) + DecisionTree
 
 PARAMETERS
@@ -25,14 +25,14 @@ mra                    ripper  0.400  0.024  0.045  0.510    1.0   1.00
 mra                        dt  0.300  0.017  0.032  0.536    3.2   4.13
 tra                    ripper  0.000  0.000  0.000  0.500    0.0   0.00
 tra                        dt  0.000  0.000  0.000  0.500    0.0   0.00
-declare                ripper  0.410  0.929  0.569  0.703    1.6   1.65
-declare                    dt  0.000  0.000  0.000  0.700    1.8   2.40
-h                      ripper  0.410  0.929  0.569  0.703    1.6   1.65
-h                          dt  0.000  0.000  0.000  0.700    1.8   2.40
+declare                ripper  0.250  0.017  0.031  0.506    1.0   4.80
+declare                    dt  0.516  0.140  0.214  0.724   12.5   7.21
+h                      ripper  0.250  0.017  0.031  0.506    1.0   4.80
+h                          dt  0.516  0.140  0.214  0.724   12.5   7.21
 data                   ripper  0.990  0.990  0.990  0.993    1.2   1.20
 data                       dt  0.997  0.997  0.997  0.998    2.1   2.07
-decld                  ripper  0.410  0.929  0.569  0.703    1.6   1.65
-decld                      dt  0.000  0.000  0.000  0.700    1.8   2.40
+decld                  ripper  0.250  0.017  0.031  0.506    1.0   4.80
+decld                      dt  0.516  0.140  0.214  0.724   12.5   7.21
 data+ia                ripper  1.000  0.990  0.995  0.995    1.5   1.50
 data+ia                    dt  1.000  0.997  0.998  0.998    2.1   2.07
 data+mr                ripper  0.990  0.990  0.990  0.993    1.2   1.20
@@ -43,23 +43,23 @@ data+mra               ripper  0.990  0.990  0.990  0.993    1.2   1.20
 data+mra                   dt  1.000  0.997  0.998  0.998    2.1   2.07
 data+tra               ripper  0.990  0.990  0.990  0.993    1.2   1.20
 data+tra                   dt  0.997  0.997  0.997  0.998    2.1   2.07
-data+declare           ripper  0.997  0.990  0.993  0.994    2.1   1.48
-data+declare               dt  0.997  0.990  0.993  0.994    2.7   2.97
-data+h                 ripper  0.997  0.990  0.993  0.994    2.1   1.48
-data+h                     dt  0.997  0.990  0.993  0.994    2.7   2.97
-data+decld             ripper  0.997  0.990  0.993  0.994    2.1   1.48
-data+decld                 dt  0.997  0.990  0.993  0.994    2.7   2.97
-h+decld                ripper  0.410  0.929  0.569  0.703    1.0   1.40
-h+decld                    dt  0.000  0.000  0.000  0.700    0.0   0.00
-h+data+decld           ripper  0.997  0.990  0.993  0.994    2.1   1.48
-h+data+decld               dt  0.997  0.990  0.993  0.994    2.7   2.97
+data+declare           ripper  1.000  0.990  0.995  0.995    1.8   1.40
+data+declare               dt  1.000  0.997  0.998  0.998    2.0   2.00
+data+h                 ripper  1.000  0.990  0.995  0.995    1.8   1.40
+data+h                     dt  1.000  0.997  0.998  0.998    2.0   2.00
+data+decld             ripper  1.000  0.990  0.995  0.995    1.8   1.40
+data+decld                 dt  1.000  0.997  0.998  0.998    2.0   2.00
+h+decld                ripper  0.415  0.695  0.517  0.658    2.2   4.07
+h+decld                    dt  0.608  0.061  0.109  0.726    4.8   4.72
+h+data+decld           ripper  1.000  0.993  0.997  0.997    2.0   1.50
+h+data+decld               dt  1.000  0.997  0.998  0.998    2.0   2.00
 ------------------------------------------------------------------------------------------------------------------------
 
 TIMING
-  data_loading                      : 0.75s
-  data_feature_extraction           : 4.56s
-  sequential_mining                 : 0.26s
-  declare_discovery                 : 0.14s
-  declD_discovery                   : 6.31s
-  cross_validation                  : 432.77s
-  total                             : 491.12s
+  data_loading                      : 0.88s
+  data_feature_extraction           : 5.31s
+  sequential_mining                 : 0.28s
+  declare_discovery                 : 0.86s
+  declD_discovery                   : 10.30s
+  cross_validation                  : 999.12s
+  total                             : 1121.35s

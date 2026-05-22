@@ -1312,6 +1312,48 @@ def run_encoding(
 # SECTION 10b: FINAL-MODEL RULE EXTRACTION (Section 7.5)
 # ══════════════════════════════════════════════════════════════════════════════
 
+def _compute_r_plus_minus(
+    X_sel: np.ndarray,
+    y: np.ndarray,
+) -> Tuple[int, int]:
+    """
+    For each selected feature, determine whether it favours the deviant
+    class (R+) or the normal class (R-) based on the sign of the
+    class-conditional mean difference Δ = mean(X|y=1) - mean(X|y=0).
+
+    Returns (n_r_plus, n_r_minus).
+    """
+    mask1 = (y == 1)
+    mask0 = (y == 0)
+    mu1 = X_sel[mask1].mean(axis=0) if mask1.any() else np.zeros(X_sel.shape[1])
+    mu0 = X_sel[mask0].mean(axis=0) if mask0.any() else np.zeros(X_sel.shape[1])
+    delta = mu1 - mu0
+    n_r_plus  = int((delta > 0).sum())
+    n_r_minus = int((delta < 0).sum())
+    return n_r_plus, n_r_minus
+
+
+def _compute_r_plus_minus_subset(
+    X_sel: np.ndarray,
+    y: np.ndarray,
+    feature_indices: Set[int],
+) -> Tuple[int, int]:
+    """
+    Compute R+/R- for a subset of selected features identified by column indices.
+    """
+    if not feature_indices:
+        return 0, 0
+    idx = sorted(feature_indices)
+    X_sub = X_sel[:, idx]
+    mask1 = (y == 1)
+    mask0 = (y == 0)
+    mu1 = X_sub[mask1].mean(axis=0) if mask1.any() else np.zeros(X_sub.shape[1])
+    mu0 = X_sub[mask0].mean(axis=0) if mask0.any() else np.zeros(X_sub.shape[1])
+    delta = mu1 - mu0
+    n_r_plus  = int((delta > 0).sum())
+    n_r_minus = int((delta < 0).sum())
+    return n_r_plus, n_r_minus
+
 def _fit_and_extract_rules(
     encoding: str,
     case_ids: List[str],
@@ -1349,6 +1391,11 @@ def _fit_and_extract_rules(
     X_sel     = X_all[:, sel]
     sel_names = [feat_names[i] for i in sel]
 
+    # ── R+ / R- for all selected features ───────────────────────────────
+    sel_r_plus,    sel_r_minus    = _compute_r_plus_minus(X_sel, labels_arr)
+    ripper_r_plus, ripper_r_minus = 0, 0
+    dt_r_plus,     dt_r_minus     = 0, 0
+
     ripper_rules: List[str] = []
     dt_rules:     List[str] = []
 
@@ -1370,6 +1417,14 @@ def _fit_and_extract_rules(
                     continue
             if best_clf is not None:
                 ripper_rules = extract_ripper_rules_text(best_clf, sel_names)
+                ripper_feat_idx: Set[int] = set()
+                for rule in best_clf.ruleset_:
+                    for cond in rule.conds:
+                        fname = str(cond.feature)
+                        if fname in sel_names:
+                            ripper_feat_idx.add(sel_names.index(fname))
+                ripper_r_plus, ripper_r_minus = _compute_r_plus_minus_subset(
+                    X_sel, labels_arr, ripper_feat_idx)
         except Exception:
             pass
 
@@ -1388,13 +1443,26 @@ def _fit_and_extract_rules(
                 continue
         if best_clf is not None:
             dt_rules = extract_dt_rules_text(best_clf, sel_names)
+            dt_feat_idx = set(int(f) for f in best_clf.tree_.feature if f >= 0)
+            dt_r_plus, dt_r_minus = _compute_r_plus_minus_subset(
+                X_sel, labels_arr, dt_feat_idx)
     except Exception:
         pass
 
     return {
-        "ripper_rules": ripper_rules,
-        "dt_rules":     dt_rules,
-        "sel_features": sel_names,
+        "ripper_rules":   ripper_rules,
+        "dt_rules":       dt_rules,
+        "sel_features":   sel_names,
+        "sel_r_plus":     sel_r_plus,
+        "sel_r_minus":    sel_r_minus,
+        "ripper_r_plus":  ripper_r_plus,
+        "ripper_r_minus": ripper_r_minus,
+        "dt_r_plus":      dt_r_plus,
+        "dt_r_minus":     dt_r_minus,
+        # backward compat
+        "r_plus":         sel_r_plus,
+        "r_minus":        sel_r_minus,
+        "r_total":        sel_r_plus + sel_r_minus,
     }
 
 
@@ -1609,9 +1677,25 @@ def run_dvm(
             final_rules_by_encoding[enc] = rules_out
             n_rip = len(rules_out["ripper_rules"])
             n_dt  = len(rules_out["dt_rules"])
-            print(f"   {enc.upper():30s}  RIPPER rules: {n_rip:3d}  DT rules: {n_dt:3d}")
+            n_sel = len(rules_out.get("sel_features", []))
+            print(f"   {enc.upper():30s}")
+            print(f"     sel_features ({n_sel:3d}):  "
+                  f"R+={rules_out.get('sel_r_plus', '?')}  "
+                  f"R-={rules_out.get('sel_r_minus', '?')}")
+            print(f"     RIPPER       ({n_rip:3d}):  "
+                  f"R+={rules_out.get('ripper_r_plus', '?')}  "
+                  f"R-={rules_out.get('ripper_r_minus', '?')}")
+            print(f"     DT           ({n_dt:3d}):  "
+                  f"R+={rules_out.get('dt_r_plus', '?')}  "
+                  f"R-={rules_out.get('dt_r_minus', '?')}")
         except Exception:
-            final_rules_by_encoding[enc] = {"ripper_rules": [], "dt_rules": [], "sel_features": []}
+            final_rules_by_encoding[enc] = {
+                "ripper_rules": [], "dt_rules": [], "sel_features": [],
+                "sel_r_plus": 0, "sel_r_minus": 0,
+                "ripper_r_plus": 0, "ripper_r_minus": 0,
+                "dt_r_plus": 0, "dt_r_minus": 0,
+                "r_plus": 0, "r_minus": 0, "r_total": 0,
+            }
 
     timing["total"] = time.time() - t0_total
 
